@@ -1,0 +1,104 @@
+--- a/vllm/v1/attention/backends/xformers.py
++++ b/vllm/v1/attention/backends/xformers.py
+@@ -4,0 +5 @@
++import os
+@@ -21,0 +23 @@ try:
++    from xformers.ops.fmha import cutlass as xformers_cutlass
+@@ -23 +25,2 @@ try:
+-        AttentionBias, PagedBlockDiagonalCausalWithOffsetPaddedKeysMask)
++        AttentionBias, BlockDiagonalCausalMask,
++        PagedBlockDiagonalCausalWithOffsetPaddedKeysMask)
+@@ -300,0 +304,2 @@ class XFormersAttentionImpl(AttentionImpl):
++        self.use_t4_contiguous_prefill = (
++            os.getenv("VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL", "0") == "1")
+@@ -380,21 +385,69 @@ class XFormersAttentionImpl(AttentionImpl):
+-            descale_shape = (prefill_meta.query_start_loc.shape[0] - 1,
+-                             key.shape[1])
+-            unified_attention(
+-                q=query[num_decode_tokens:num_actual_tokens],
+-                k=key_cache,
+-                v=value_cache,
+-                out=output[num_decode_tokens:num_actual_tokens],
+-                cu_seqlens_q=prefill_meta.query_start_loc,
+-                max_seqlen_q=prefill_meta.max_query_len,
+-                seqused_k=prefill_meta.seq_lens,
+-                max_seqlen_k=prefill_meta.max_seq_len,
+-                softmax_scale=self.scale,
+-                causal=True,
+-                alibi_slopes=self.alibi_slopes,
+-                window_size=self.sliding_window,
+-                block_table=prefill_meta.block_table,
+-                softcap=self.logits_soft_cap,
+-                q_descale=None,  # Not supported
+-                k_descale=layer._k_scale.expand(descale_shape),
+-                v_descale=layer._v_scale.expand(descale_shape),
+-            )
++            if self.use_t4_contiguous_prefill:
++                # Triton 3.3 cannot lower the vLLM/FlexAttention FP16 dot
++                # kernels for SM75. Embedding requests are pure prefills, so
++                # use the current contiguous Q/K/V tensors with xFormers'
++                # precompiled CUTLASS kernel and avoid paged Triton attention.
++                # Prefix caching and chunked prefill must be disabled so that
++                # every KV token needed by a request is present in key/value.
++                q_seqlens = torch.diff(prefill_meta.query_start_loc)
++                if not torch.equal(q_seqlens, prefill_meta.seq_lens):
++                    raise RuntimeError(
++                        "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL requires "
++                        "prefix caching and chunked prefill to be disabled")
++                if self.sliding_window != (-1, -1):
++                    raise RuntimeError(
++                        "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL does not "
++                        "support sliding-window attention")
++                if self.logits_soft_cap != 0:
++                    raise RuntimeError(
++                        "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL does not "
++                        "support logits soft cap")
++
++                prefill_query = query[num_decode_tokens:num_actual_tokens]
++                prefill_key = key[num_decode_tokens:num_actual_tokens]
++                prefill_value = value[num_decode_tokens:num_actual_tokens]
++                q = prefill_query.view(1, -1, self.num_kv_heads,
++                                       self.num_queries_per_kv,
++                                       self.head_size)
++                k = prefill_key.view(1, -1, self.num_kv_heads, 1,
++                                     self.head_size).expand(
++                                         -1, -1, -1,
++                                         self.num_queries_per_kv, -1)
++                v = prefill_value.view(1, -1, self.num_kv_heads, 1,
++                                       self.head_size).expand(
++                                           -1, -1, -1,
++                                           self.num_queries_per_kv, -1)
++                attn_bias = BlockDiagonalCausalMask.from_seqlens(
++                    q_seqlens.tolist(), device=query.device)
++                output[num_decode_tokens:num_actual_tokens] = (
++                    xops.memory_efficient_attention_forward(
++                        q,
++                        k,
++                        v,
++                        attn_bias=attn_bias,
++                        p=0.0,
++                        scale=self.scale,
++                        op=xformers_cutlass.FwOp,
++                    ).view(prefill_query.shape))
++            else:
++                descale_shape = (prefill_meta.query_start_loc.shape[0] - 1,
++                                 key.shape[1])
++                unified_attention(
++                    q=query[num_decode_tokens:num_actual_tokens],
++                    k=key_cache,
++                    v=value_cache,
++                    out=output[num_decode_tokens:num_actual_tokens],
++                    cu_seqlens_q=prefill_meta.query_start_loc,
++                    max_seqlen_q=prefill_meta.max_query_len,
++                    seqused_k=prefill_meta.seq_lens,
++                    max_seqlen_k=prefill_meta.max_seq_len,
++                    softmax_scale=self.scale,
++                    causal=True,
++                    alibi_slopes=self.alibi_slopes,
++                    window_size=self.sliding_window,
++                    block_table=prefill_meta.block_table,
++                    softcap=self.logits_soft_cap,
++                    q_descale=None,  # Not supported
++                    k_descale=layer._k_scale.expand(descale_shape),
++                    v_descale=layer._v_scale.expand(descale_shape),
++                )

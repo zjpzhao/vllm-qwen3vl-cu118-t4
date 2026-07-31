@@ -56,6 +56,8 @@ python -m pip install --no-index --find-links "${WHEELHOUSE}" \
   --constraint "${CONSTRAINTS}" \
   "${WHEELHOUSE}/vllm-0.11.0+torch271.cu118-cp310-cp310-linux_x86_64.whl"
 
+python "${RELEASE_DIR}/apply_t4_xformers_hotfix.py"
+
 if python -m pip show cupy-cuda12x >/dev/null 2>&1; then
   echo "ERROR: cupy-cuda12x must not be installed in this CUDA 11.8 environment." >&2
   exit 1
@@ -65,7 +67,11 @@ python -m pip check
 
 echo
 echo "Installation complete. Before serving, run:"
+echo "  export VLLM_USE_V1=1"
 echo "  export VLLM_ATTENTION_BACKEND=XFORMERS"
+echo "  export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1"
+echo "  export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas"
+echo "  export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers"
 echo "  python ${RELEASE_DIR}/verify_target.py"
 echo "  python ${RELEASE_DIR}/verify_qwen3vl_embedding.py --model /root/Qwen3-VL-Embedding-2B"
 echo "For full multimodal validation, append: --image /path/to/test.jpg"

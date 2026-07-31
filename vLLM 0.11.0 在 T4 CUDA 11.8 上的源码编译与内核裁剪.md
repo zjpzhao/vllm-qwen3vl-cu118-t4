@@ -313,8 +313,34 @@ conda activate vllm-t4-cu118-torch271
 
 ```bash
 unset CUDA_HOME
+export VLLM_USE_V1=1
 export VLLM_ATTENTION_BACKEND=XFORMERS
+export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
+export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
+export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 python verify_target.py
+```
+
+`install_target.sh` 会自动运行 `apply_t4_xformers_hotfix.py`。若目标机已经安装
+过旧版材料，无需重装或重编 wheel，只需在更新发布仓库后执行：
+
+```bash
+python apply_t4_xformers_hotfix.py
+python verify_qwen3vl_embedding.py \
+  --model /root/Qwen3-VL-Embedding-2B \
+  --max-model-len 2048 \
+  --gpu-memory-utilization 0.80
+```
+
+该补丁解决两条 SM75 运行时 JIT 阻断：XFormers V1 prefill 会进入
+`triton_unified_attention.py`，FlexAttention 则会由 TorchInductor 生成 Triton
+kernel；两者在 Torch 2.7.1 配套 Triton 的 `ConvertTritonGPUToLLVM` 阶段均会报
+`Unsupported conversion from f16 to f16`。补丁仅针对 Qwen3-VL
+pooling/embedding 的纯 prefill，把当前连续 Q/K/V 交给预编译的 xFormers
+CUTLASS kernel，并要求关闭 prefix caching 和 chunked prefill。回滚命令为：
+
+```bash
+python apply_t4_xformers_hotfix.py --restore
 ```
 
 若采用 R450 + `cuda-compat-11-8`，则在执行验证与服务前把 `/usr/local/cuda-11.8/compat` 放在最前面。不得出现 `/usr/local/cuda-12.9/compat`、其他 CUDA 12 compat 路径或任何 toolkit `lib/stubs`。此时 `nvidia-smi` 仍可能显示 R450 对应的 CUDA 能力，这不代表 compat 库未生效；应以真实 CUDA、XFormers 和 vLLM 测试为准。
@@ -387,13 +413,20 @@ python -m pip check
 ```bash
 export VLLM_USE_V1=1
 export VLLM_ATTENTION_BACKEND=XFORMERS
+export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
+export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
+export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 
 vllm serve /path/to/Qwen3-VL-model \
   --host 127.0.0.1 \
+  --runner pooling \
+  --convert embed \
   --dtype half \
   --kv-cache-dtype auto \
   --enforce-eager \
   -O0 \
+  --no-enable-prefix-caching \
+  --no-enable-chunked-prefill \
   --gpu-memory-utilization 0.80 \
   --max-model-len 2048 \
   --max-num-seqs 1 \
@@ -412,6 +445,7 @@ vllm serve /path/to/Qwen3-VL-model \
 | `libcuda.so.1` 缺失 | 修复真实 NVIDIA driver 或 compat 路径，绝不能使用 toolkit stub |
 | `libcudart.so.11.0` 缺失 | 安装/恢复 cu118 用户态 runtime，并检查环境库路径 |
 | XFormers operator 不可用 | 使用同一 PyTorch/CUDA ABI 和 `sm_75` 重新源码构建 |
+| `Unsupported conversion from f16 to f16` | 确认已应用 `apply_t4_xformers_hotfix.py`、后端为 XFORMERS，并关闭 prefix caching/chunked prefill |
 | `no kernel image is available` | 检查相关 torch/vision/XFormers wheel 是否包含 `sm_75` |
 | T4 OOM | 换更小 checkpoint，降低上下文长度、并发和显存利用率 |
 

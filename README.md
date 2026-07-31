@@ -13,7 +13,11 @@ conda env create -f environment.yml
 conda activate vllm-t4-cu118-torch271
 ./install_target.sh
 
+export VLLM_USE_V1=1
 export VLLM_ATTENTION_BACKEND=XFORMERS
+export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
+export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
+export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 python verify_target.py
 python verify_qwen3vl_embedding.py \
   --model /root/Qwen3-VL-Embedding-2B
@@ -24,14 +28,33 @@ python verify_qwen3vl_embedding.py \
 启动时保持相同环境，例如：
 
 ```bash
+export VLLM_USE_V1=1
 export VLLM_ATTENTION_BACKEND=XFORMERS
+export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
+export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
 vllm serve /path/to/Qwen3-VL-model \
+  --runner pooling \
+  --convert embed \
   --dtype half \
   --kv-cache-dtype auto \
+  --no-enable-prefix-caching \
+  --no-enable-chunked-prefill \
   --tensor-parallel-size 1
 ```
 
 模型权重不包含在本发布包中。
+
+`install_target.sh` 会自动调用 `apply_t4_xformers_hotfix.py`，将 embedding
+纯 prefill 改为连续 Q/K/V 的 xFormers CUTLASS attention，从而避开 SM75 上
+无法编译的 Triton Unified/Flex Attention。已经完成旧版安装时可单独执行：
+
+```bash
+python apply_t4_xformers_hotfix.py
+```
+
+需要回滚时执行 `python apply_t4_xformers_hotfix.py --restore`。该热补丁仅适用
+于 pooling/embedding 的纯 prefill；必须禁用 prefix caching 和 chunked prefill，
+不用于文本生成/decode。
 
 ## R450.191.01 与 libcuda 边界
 
@@ -76,9 +99,9 @@ git apply patches/vllm-0.11.0-t4-cu118-torch271.patch
 
 补丁记录 CUDA 11.8/T4 与 Qwen3-VL embedding 所需的最小改动：CUDA 11 编译标志、FP8/DeepGEMM 路径裁剪、CUDA 12 MoE 算子 stub、KV cache 兼容转换、嵌套语言模型 generation head 清理，以及从运行依赖中移除官方 Torch/XFormers 固定版本并禁用 Ray CGraph extra。
 
-## Git 仓库与 GitHub Release
+## GitHub 仓库与 Release
 
-Git 仓库只提交 README、文档、脚本、requirements、日志和 `patches/`。不要提交 `wheelhouse/`、完整 `.tar.gz` 或分卷文件，也不要使用 Git LFS 存放这些二进制；它们应作为 GitHub Release assets 发布。
+Git 仓库使用 `https://github.com/zjpzhao/vllm-qwen3vl-cu118-t4.git`，只提交 README、文档、脚本、requirements 和 `patches/`。不要提交构建日志、`wheelhouse/`、完整 `.tar.gz` 或分卷文件，也不要使用 Git LFS 存放这些二进制；它们应通过 GitHub Release assets 发布。
 
 仓库的 `.gitignore` 至少应包含：
 
@@ -104,7 +127,7 @@ git push origin HEAD
 
 在 `git status` 中确认没有 `wheelhouse/` 或分卷文件后再 push。
 
-### 生成小于 2 GiB 的 Release 分卷
+### 生成小于 2 GiB 的 GitHub Release 分卷
 
 假设完整材料目录为 `/path/to/user-storage/tools/vllm-qwen3vl-cu118-t4`：
 

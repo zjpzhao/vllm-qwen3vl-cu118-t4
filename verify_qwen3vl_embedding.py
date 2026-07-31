@@ -7,7 +7,14 @@ import math
 import os
 from pathlib import Path
 
-os.environ.setdefault("VLLM_ATTENTION_BACKEND", "XFORMERS")
+os.environ["VLLM_USE_V1"] = "1"
+os.environ["VLLM_ATTENTION_BACKEND"] = "XFORMERS"
+os.environ["VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL"] = "1"
+if Path("/usr/local/cuda-11.8/bin/ptxas").is_file():
+    os.environ.setdefault("TRITON_PTXAS_PATH",
+                          "/usr/local/cuda-11.8/bin/ptxas")
+os.environ.setdefault("TRITON_CACHE_DIR",
+                      "/tmp/triton-cache-cu118-sm75-xformers")
 
 
 def parse_args():
@@ -90,6 +97,8 @@ def main() -> None:
         gpu_memory_utilization=args.gpu_memory_utilization,
         pooler_config=PoolerConfig(pooling_type="LAST", normalize=True),
         limit_mm_per_prompt=limits,
+        enable_prefix_caching=False,
+        enable_chunked_prefill=False,
         disable_log_stats=True,
     )
     tokenizer = llm.get_tokenizer()
@@ -119,6 +128,7 @@ def main() -> None:
         "image_validated": image is not None,
         "dtype": "float16",
         "pooling": "LAST + L2 normalize",
+        "attention": "xFormers CUTLASS contiguous prefill",
     })
 
 
