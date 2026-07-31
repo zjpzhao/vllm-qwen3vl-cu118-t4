@@ -4,7 +4,7 @@
 
 vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 模板依赖 CUDA 12 才满足的接口、编译宏组合和更高 GPU 架构能力，无法在 CUDA 11.8 + SM75 下原样编译。Codex 将源码调整为一个**仅面向 NVIDIA T4（SM75）、glibc 2.28、以 FP16 为受支持运行边界的 CUDA 11.8 wheel**：恢复 CUDA 11 的 half/BF16 编译能力，裁剪不兼容的 DeepGEMM 实现，为 CUDA 12-only MoE 算子保留 ABI stub，修复 CUDA driver 链接，并把 vLLM 0.14 的通用多模态 embedding/pooling 适配方式回移到 0.11.0，使 `Qwen3VLForConditionalGeneration` 能转换为 `Qwen3VLForEmbedding`。
 
-当前已使用稳定版 PyTorch 2.7.1+cu118 完成 vLLM 与 XFormers wheel 构建、安装、原生扩展导入、相对 RUNPATH、`auditwheel show` 和 Qwen3-VL pooling 路由回归测试；真实 T4 上的 Qwen3-VL embedding 端到端推理仍待验证。
+当前已使用稳定版 PyTorch 2.7.1+cu118 完成 vLLM 与 XFormers wheel 构建、安装、原生扩展导入、相对 RUNPATH、`auditwheel show` 和 Qwen3-VL pooling 路由回归测试，并已在真实 T4、R450.191.01、glibc 2.28 与 `cuda-compat-11-8` 环境完成离线推理和 OpenAI Embedding API 端到端验证。
 
 ## 1. 目标与边界
 
@@ -203,9 +203,10 @@ vllm/vllm_flash_attn/*.so: $ORIGIN/../../torch/lib:$ORIGIN/../../nvidia/cuda_run
 | 平台兼容性 | wheel 实际标签为 `linux_x86_64`，`auditwheel` 判定系统符号下限为 `manylinux_2_24_x86_64`；目标机 glibc 2.28 满足要求 |
 | Qwen3-VL pooling | 三个 adapter/registry CPU 回归测试通过；`Qwen3VLForConditionalGeneration` 正确路由为 `Qwen3VLForEmbedding` |
 | `pip check` | 在 `torch==2.7.1+cu118`、`torchvision==0.22.1+cu118`、`xformers==0.0.31` 的完整运行环境中为 `No broken requirements found` |
-| 真实 T4 推理 | 尚未验证 |
+| 真实 T4 推理 | 已通过：T4 / R450.191.01 / `cuda-compat-11-8`，FP16、XFormers CUTLASS contiguous prefill；2 条文本离线 embedding 与 OpenAI API 均成功 |
+| Embedding API | `/health` 为 HTTP 200，`/v1/models` 正确注册模型；`/v1/embeddings` 返回 2048 维向量，L2 norm `1.0000000199780135`，输入 35 tokens |
 
-构建节点上的**链接**使用 CUDA 11.8 toolkit driver stub；扩展导入时动态链接器实际可能解析到该节点的 CUDA 12.9 compat。因此构建机测试只能证明 wheel、ELF 与算子 ABI 完整，不构成 R450/T4 验证；最终仍需在真实 T4 上验证 NVIDIA driver、XFormers、视觉编码、prefill、decode 和 KV Cache 全链路。
+构建节点上的**链接**使用 CUDA 11.8 toolkit driver stub；扩展导入时动态链接器实际可能解析到该节点的 CUDA 12.9 compat，因此构建机测试本身只证明 wheel、ELF 与算子 ABI 完整。上述 R450/T4 结论来自目标机独立验收；当前已经验证文本 embedding/pooling 的完整 prefill 与 API 链路，图片输入仍需按本节给出的多模态配置单独验收。本 fork 不用于文本生成/decode。
 
 `readelf -d` 已确认扩展只有通用的 `NEEDED: libcuda.so.1`，wheel 内没有打包任何 `libcuda`；相对 RUNPATH 也不包含 driver 路径。构建链接使用 CUDA 11.8 toolkit stub 生成通用 SONAME，目标 T4 上必须解析到真实 NVIDIA driver 或 `/usr/local/cuda-11.8/compat/libcuda.so.1`，严禁使用编译机的 CUDA 12.9 compat 或 toolkit `lib/stubs`。
 
@@ -418,7 +419,9 @@ export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
 export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 
 vllm serve /path/to/Qwen3-VL-model \
-  --host 127.0.0.1 \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --served-model-name Qwen3-VL-Embedding-2B \
   --runner pooling \
   --convert embed \
   --dtype half \
@@ -430,10 +433,32 @@ vllm serve /path/to/Qwen3-VL-model \
   --gpu-memory-utilization 0.80 \
   --max-model-len 2048 \
   --max-num-seqs 1 \
+  --tensor-parallel-size 1 \
+  --limit-mm-per-prompt '{"image":0,"video":0}' \
   --trust-remote-code
 ```
 
-依次完成 `/health`、模型列表、纯文本请求和单图请求，日志必须确认 T4、FP16 和 XFORMERS，并且没有进入本文裁剪的内核。全部通过后，再逐项取消 `--enforce-eager`、提高 `--max-model-len`、`--max-num-seqs` 和显存利用率；不要一次改变多个参数。
+日志必须出现 `Using XFormers backend on V1 engine` 和支持任务
+`['encode', 'embed']`。T4 上关于 FA2 需要 compute capability >= 8 的信息是
+后端探测结果，只要随后明确使用 XFormers 就不影响运行。
+
+启动后先检查服务和模型列表：
+
+```bash
+curl -f http://127.0.0.1:8000/health
+curl -s http://127.0.0.1:8000/v1/models | python -m json.tool
+```
+
+再按发布目录 `README.md` 的 `/v1/embeddings` 请求完成文本验收。成功判据为：
+模型名正确、向量维度 2048、全部数值有限、L2 norm 与 1.0 的差小于 0.02。
+本次真实目标机结果为 `norm=1.0000000199780135`、35 个 prompt tokens 和
+`completion_tokens=0`；embedding 不生成文本，因此 completion tokens 为 0 正常。
+
+当前命令显式关闭图片输入。需要验证多模态时，将
+`--limit-mm-per-prompt` 改为 `'{"image":1,"video":0}'` 后重启，并使用 chat
+embedding 请求的 `image_url` 内容块；图片通过前不得把文本验收结论扩大为完整
+多模态验收。文本链路通过后，可逐步提高 `--max-num-seqs`、上下文长度和显存
+利用率；prefix caching 与 chunked prefill 在此热补丁中仍不能启用。
 
 ### 6.7 常见阻断条件
 
@@ -451,4 +476,4 @@ vllm serve /path/to/Qwen3-VL-model \
 
 ## 一句话汇报
 
-面向 T4 / CUDA 11.8 / glibc 2.28，vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 与 CUDA 12-only MoE 内核无法原样编译，我已裁剪不兼容实现并保留 ABI stub、回移 Qwen3-VL embedding/pooling 适配，并基于 PyTorch 2.7.1+cu118 重建和审计 SM75 vLLM/XFormers 离线包；R450.191.01 仍须在真实 T4 上完成端到端验证，具体裁剪内核和部署步骤参考本文。
+面向 T4 / CUDA 11.8 / glibc 2.28，vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 与 CUDA 12-only MoE 内核无法原样编译，我已裁剪不兼容实现并保留 ABI stub、回移 Qwen3-VL embedding/pooling 适配，并用 xFormers CUTLASS contiguous prefill 热补丁避开 SM75 不兼容的 Triton Attention；该方案已在 R450.191.01 真实 T4 上完成 2048 维文本 Embedding API 端到端验收，具体裁剪内核和部署步骤参考本文。

@@ -11,10 +11,16 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
 - vLLM 与 XFormers 核心扩展按 `sm_75` 构建。
 - 回移 Qwen3-VL 多模态 embedding/pooling adapter，支持把生成架构转换为
   `Qwen3VLForEmbedding`，并提供端到端验证脚本。
+- 增加 `apply_t4_xformers_hotfix.py`：在 T4 纯 prefill embedding 路径中使用
+  xFormers CUTLASS contiguous attention，避开 SM75 上无法降低的 Triton
+  Unified/Flex Attention FP16 kernel；安装脚本会自动应用并保留可恢复备份。
 - 将 `ray[cgraph]` 改为基础 Ray，避免引入 `cupy-cuda12x`。
 - 使用 glibc 2.28 sysroot 构建并移除绝对 Conda RPATH；vLLM wheel 的
   `auditwheel show` 系统符号下限为 `manylinux_2_24_x86_64`。
 - 提供完整的 143-wheel 离线环境、安装脚本、目标 T4 验证脚本和构建日志。
+- 已在真实 T4、R450.191.01、glibc 2.28 和 `cuda-compat-11-8` 环境完成服务
+  验收：OpenAI `/v1/embeddings` 返回 2048 维归一化向量，L2 norm 为
+  `1.0000000199780135`。
 
 ## Release assets
 
@@ -35,7 +41,7 @@ Release 还会单独附带 vLLM 与 XFormers 两个核心 wheel，方便已有�
 - 目标系统：`x86_64`、CPython 3.10、glibc `>=2.28`、NVIDIA T4。
 - 禁止把 CUDA toolkit `lib/stubs` 或 `/usr/local/cuda-12.9/compat` 加入
   `LD_LIBRARY_PATH`。
-- R450.191.01 必须在真实 T4 上完整验证；失败时升级驱动，或由管理员安装
-  `cuda-compat-11-8`。
+- R450.191.01 已配合 `cuda-compat-11-8` 在当前真实 T4 通过文本 embedding
+  验证；这是遗留环境实测结果，不替代升级到仍受支持驱动分支的生产建议。
 - 不支持 FP8/DeepGEMM、DeepSeek FP8 MLA、FA3、Ray CGraph/流水并行及本文档
   列出的高架构内核。

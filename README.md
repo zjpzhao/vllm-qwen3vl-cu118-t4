@@ -25,24 +25,120 @@ python verify_qwen3vl_embedding.py \
 
 如需同时验证视觉输入，追加 `--image /path/to/test.jpg`。验证脚本要求输出维度为 2048、L2 norm 约为 1，并分别覆盖纯文本和可选图片 embedding。
 
-启动时保持相同环境，例如：
+## 启动 Embedding 后端
+
+以下命令已经在真实 T4 / R450.191.01 / CUDA 11.8 compatibility package
+环境中通过验证。热补丁只支持 pooling/embedding 的纯 prefill，因此 prefix
+caching 和 chunked prefill 必须保持关闭。
 
 ```bash
+conda activate vllm-t4-cu118-torch271
+cd /root/vllm-qwen3vl-cu118-t4
+
+unset CUDA_HOME
 export VLLM_USE_V1=1
 export VLLM_ATTENTION_BACKEND=XFORMERS
 export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
 export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
-vllm serve /path/to/Qwen3-VL-model \
+export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
+export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}
+
+mkdir -p "${TRITON_CACHE_DIR}"
+set -o pipefail
+
+vllm serve /root/Qwen3-VL-Embedding-2B \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --served-model-name Qwen3-VL-Embedding-2B \
   --runner pooling \
   --convert embed \
   --dtype half \
   --kv-cache-dtype auto \
+  --enforce-eager \
+  -O0 \
   --no-enable-prefix-caching \
   --no-enable-chunked-prefill \
-  --tensor-parallel-size 1
+  --gpu-memory-utilization 0.80 \
+  --max-model-len 2048 \
+  --max-num-seqs 1 \
+  --tensor-parallel-size 1 \
+  --limit-mm-per-prompt '{"image":0,"video":0}' \
+  --trust-remote-code \
+  2>&1 | tee vllm_server.log
 ```
 
-模型权重不包含在本发布包中。
+启动日志必须包含 `Using XFormers backend on V1 engine` 和
+`Supported_tasks: ['encode', 'embed']`。T4 不支持 FA2，因此
+`FA2 is only supported on devices with compute capability >= 8` 是后端探测信息，
+只要随后选择 XFormers 就不影响服务。模型权重不包含在本发布包中。
+
+## API 验收
+
+在另一个终端检查健康状态和模型注册：
+
+```bash
+curl -f http://127.0.0.1:8000/health
+curl -s http://127.0.0.1:8000/v1/models | python -m json.tool
+```
+
+发送与离线验证脚本相同模板的文本 embedding 请求：
+
+```bash
+curl -s http://127.0.0.1:8000/v1/embeddings \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "Qwen3-VL-Embedding-2B",
+    "messages": [
+      {
+        "role": "system",
+        "content": [{
+          "type": "text",
+          "text": "Retrieve images or text relevant to the user query."
+        }]
+      },
+      {
+        "role": "user",
+        "content": [{
+          "type": "text",
+          "text": "A woman playing with her dog on a beach at sunset."
+        }]
+      }
+    ],
+    "add_generation_prompt": true,
+    "encoding_format": "float",
+    "normalize": true
+  }' -o embedding_response.json
+```
+
+检查输出维度、有限值和 L2 norm：
+
+```bash
+python - <<'PY'
+import json
+import math
+
+with open("embedding_response.json") as f:
+    response = json.load(f)
+if "error" in response:
+    raise RuntimeError(response["error"])
+
+vector = response["data"][0]["embedding"]
+norm = math.sqrt(sum(x * x for x in vector))
+print("model:", response["model"])
+print("dimension:", len(vector))
+print("norm:", norm)
+print("usage:", response["usage"])
+assert len(vector) == 2048
+assert all(math.isfinite(x) for x in vector)
+assert abs(norm - 1.0) < 0.02
+print("PASS")
+PY
+```
+
+真实目标机实测得到 `dimension: 2048`、`norm: 1.0000000199780135`、
+`prompt_tokens: 35` 并输出 `PASS`。Embedding 不生成文本，
+`completion_tokens: 0` 属正常结果。当前服务命令是文本模式；验证图片前需将
+`--limit-mm-per-prompt` 改为 `{"image":1,"video":0}` 并重启服务。
 
 `install_target.sh` 会自动调用 `apply_t4_xformers_hotfix.py`，将 embedding
 纯 prefill 改为连续 Q/K/V 的 xFormers CUTLASS attention，从而避开 SM75 上
