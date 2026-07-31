@@ -1,0 +1,10 @@
+# Binary artifacts are distributed through GitHub Release assets, not Git.
+/wheelhouse/
+/release-assets/
+*.tar
+*.tar.gz
+*.part-*
+/SHA256SUMS
+
+__pycache__/
+*.pyc

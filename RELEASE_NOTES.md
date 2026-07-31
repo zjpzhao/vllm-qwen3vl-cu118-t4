@@ -1,0 +1,41 @@
+# v0.11.0-t4-cu118-torch271
+
+这是面向 NVIDIA T4（SM75）与 glibc 2.28 的 vLLM 0.11.0 定制发布，固定 CPython 3.10、
+PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
+0.0.31。它仅承诺 FP16、KV Cache dtype `auto` 与 XFormers attention。
+
+主要改动：
+
+- 裁剪 CUDA 11.8 无法编译的 DeepGEMM BF16/FP8 实现。
+- 为 CUDA 12-only MoE 算子保留明确报错的 ABI stub。
+- vLLM 与 XFormers 核心扩展按 `sm_75` 构建。
+- 回移 Qwen3-VL 多模态 embedding/pooling adapter，支持把生成架构转换为
+  `Qwen3VLForEmbedding`，并提供端到端验证脚本。
+- 将 `ray[cgraph]` 改为基础 Ray，避免引入 `cupy-cuda12x`。
+- 使用 glibc 2.28 sysroot 构建并移除绝对 Conda RPATH；vLLM wheel 的
+  `auditwheel show` 系统符号下限为 `manylinux_2_24_x86_64`。
+- 提供完整的 143-wheel 离线环境、安装脚本、目标 T4 验证脚本和构建日志。
+
+## Release assets
+
+完整离线目录约 3.1 GiB，以小于 2 GiB 的分卷上传：
+
+```bash
+cat vllm-qwen3vl-cu118-t4-offline.tar.part-* > \
+  vllm-qwen3vl-cu118-t4-offline.tar
+sha256sum -c vllm-qwen3vl-cu118-t4-offline.tar.sha256
+tar -xf vllm-qwen3vl-cu118-t4-offline.tar
+```
+
+Release 还会单独附带 vLLM 与 XFormers 两个核心 wheel，方便已有匹配环境的
+用户下载；完整部署仍推荐使用分卷离线包。
+
+## 重要运行边界
+
+- 目标系统：`x86_64`、CPython 3.10、glibc `>=2.28`、NVIDIA T4。
+- 禁止把 CUDA toolkit `lib/stubs` 或 `/usr/local/cuda-12.9/compat` 加入
+  `LD_LIBRARY_PATH`。
+- R450.191.01 必须在真实 T4 上完整验证；失败时升级驱动，或由管理员安装
+  `cuda-compat-11-8`。
+- 不支持 FP8/DeepGEMM、DeepSeek FP8 MLA、FA3、Ray CGraph/流水并行及本文档
+  列出的高架构内核。

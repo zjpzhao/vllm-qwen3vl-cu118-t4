@@ -1,0 +1,420 @@
+# 面向 NVIDIA T4 / CUDA 11.8 / glibc 2.28 的 vLLM 0.11.0 Qwen3-VL Embedding 回移与内核裁剪
+
+## 结论
+
+vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 模板依赖 CUDA 12 才满足的接口、编译宏组合和更高 GPU 架构能力，无法在 CUDA 11.8 + SM75 下原样编译。Codex 将源码调整为一个**仅面向 NVIDIA T4（SM75）、glibc 2.28、以 FP16 为受支持运行边界的 CUDA 11.8 wheel**：恢复 CUDA 11 的 half/BF16 编译能力，裁剪不兼容的 DeepGEMM 实现，为 CUDA 12-only MoE 算子保留 ABI stub，修复 CUDA driver 链接，并把 vLLM 0.14 的通用多模态 embedding/pooling 适配方式回移到 0.11.0，使 `Qwen3VLForConditionalGeneration` 能转换为 `Qwen3VLForEmbedding`。
+
+当前已使用稳定版 PyTorch 2.7.1+cu118 完成 vLLM 与 XFormers wheel 构建、安装、原生扩展导入、相对 RUNPATH、`auditwheel show` 和 Qwen3-VL pooling 路由回归测试；真实 T4 上的 Qwen3-VL embedding 端到端推理仍待验证。
+
+## 1. 目标与边界
+
+| 项目 | 固定值 |
+|---|---|
+| vLLM | `v0.11.0`，commit `b8b302cde434df8c9289a2b465406b47ebab1c2d` |
+| 目标 GPU | NVIDIA T4，计算能力 7.5（`sm_75`） |
+| CUDA | nvcc 11.8.89 |
+| Host 编译器 | Conda GCC/G++ 11.4，`sysroot_linux-64=2.28` |
+| Python | 3.10.20 |
+| 目标系统 ABI | x86_64，glibc `>=2.28` |
+| PyTorch | `2.7.1+cu118`（CUDA 11.8 的最新官方稳定 wheel 系列） |
+| torchvision | `0.22.1+cu118` |
+| XFormers | `0.0.31`，源码构建，CUDA 11.8 / PyTorch 2.7.1 / SM75 |
+| Transformers | `4.57.3`；Qwen-VL utils `0.0.14` |
+| 运行边界 | FP16 权重，KV Cache dtype `auto` |
+
+这里的“FP16 wheel”表示受支持的运行配置，不表示二进制中不存在任何 FP8 模板或符号。
+
+## 2. Codex 的实际改动
+
+### 2.1 固定 CUDA 11.8 与 SM75 工具链
+
+Codex 将构建工具链固定为：
+
+```bash
+export BUILD_ENV=/path/to/user-storage/miniconda3/envs/vllm-cu118-torch271-sysroot
+export CUDA_HOME=/tmp/cuda-11.8-sysroot-view
+export PATH="$BUILD_ENV/bin:$CUDA_HOME/bin:/usr/bin:/bin"
+export CC="$BUILD_ENV/bin/x86_64-conda-linux-gnu-gcc"
+export CXX="$BUILD_ENV/bin/x86_64-conda-linux-gnu-g++"
+export CUDAHOSTCXX="$CXX"
+export TORCH_CUDA_ARCH_LIST="7.5"
+export MAX_JOBS=8
+export NVCC_THREADS=1
+export CMAKE_BUILD_TYPE=Release
+export SETUPTOOLS_SCM_PRETEND_VERSION=0.11.0+torch271
+export VLLM_TARGET_DEVICE=cuda
+```
+
+关键点：
+
+- `CUDA_HOME` 必须指向隔离的 nvcc 11.8 view，避免 `setup.py` 误用编译机的 CUDA 12.9；`CUDA::cuda_driver` 链接到该 view 的 toolkit stub。
+- Host compiler 和 sysroot 固定为 GCC/G++ 11.4 + glibc 2.28，避免把编译机更高版本的 GLIBC/GLIBCXX 写入 wheel。
+- `TORCH_CUDA_ARCH_LIST=7.5` 保证 wheel 只生成 T4 的 `sm_75` 设备代码。
+- `MAX_JOBS=8`、`NVCC_THREADS=1` 是本机实测安全值。当前编译会话受 32 GiB cgroup 限制，16 worker 会令多个 NVCC 被 SIGKILL（exit 137）并可能连带杀掉连接进程；使用 Release 模式和 8 worker 后完整构建通过。
+- `SETUPTOOLS_SCM_PRETEND_VERSION=0.11.0+torch271` 明确区分定制 ABI，最终 metadata 为 `0.11.0+torch271.cu118`。
+
+### 2.2 固定本地依赖
+
+为避免 CMake 在构建过程中联网，Codex 使用 vLLM 0.11.0 对应的固定源码：
+
+| 依赖 | 版本/commit | 环境变量 |
+|---|---|---|
+| CUTLASS | v4.0.0 | `VLLM_CUTLASS_SRC_DIR` |
+| FlashMLA | `5f65b85703c7ed75fda01e06495077caad207c3f` | `FLASH_MLA_SRC_DIR` |
+| vllm-flash-attention | `ee4d25bd84e0cbc7e0b9b9685085fd5db2dcb62a` | `VLLM_FLASH_ATTN_SRC_DIR` |
+
+构建 Python 环境使用 CPython 3.10，并从 PyTorch 官方 cu118 索引安装稳定版组合：
+
+```bash
+conda create -n vllm-cu118-torch271 python=3.10 pip -y
+conda activate vllm-cu118-torch271
+python -m pip install \
+  torch==2.7.1 torchvision==0.22.1 \
+  --index-url https://download.pytorch.org/whl/cu118
+```
+
+PyTorch 2.7.1 是仍提供官方 cu118 wheel 的最新稳定 PyTorch 系列；PyTorch 2.8 的稳定 Linux wheel 已不提供 cu118。vLLM 0.11.0 上游原本固定 PyTorch 2.8，因此 CMake 会打印 `2.8.0 expected` 警告；本交付物是已经实际重编并验证原生扩展的 PyTorch 2.7.1 定制分支，不是 vLLM 官方二进制组合。
+
+XFormers 使用官方 v0.0.31 源码重新构建：其 wheel metadata 为 `xformers==0.0.31`，`cpp_lib.json` 记录 CUDA `1108`、PyTorch `2.7.1+cu118` 与 `TORCH_CUDA_ARCH_LIST=7.5`，`_C.so` 的 cubin 静态检查只包含 `sm_75`。T4 应使用 XFormers CUTLASS attention 路径。
+
+### 2.3 增加 CUDA 11 兼容编译条件
+
+Codex 在 `CMakeLists.txt` 中使用 FindCUDA 实际提供的 `CUDA_VERSION` 判断 CUDA 11，并追加：
+
+```cmake
+if(VLLM_GPU_LANG STREQUAL "CUDA" AND CUDA_VERSION VERSION_LESS 12.0)
+  list(APPEND VLLM_GPU_FLAGS
+    "-U__CUDA_NO_HALF_OPERATORS__"
+    "-U__CUDA_NO_HALF_CONVERSIONS__"
+    "-U__CUDA_NO_BFLOAT16_CONVERSIONS__"
+    "-U__CUDA_NO_HALF2_OPERATORS__"
+    "-DVLLM_CUDA11_COMPAT=1")
+endif()
+```
+
+作用：
+
+- 恢复 PyTorch 默认关闭的 CUDA half、half2 和 BF16 运算符/转换。
+- 让普通 FP16/BF16 模板能够在 nvcc 11.8 下实例化。
+- 用 `VLLM_CUDA11_COMPAT` 精确隔离无法兼容的实现，而不是删除整个 FP8 模块。
+- 必须检查 `CUDA_VERSION`；当前 FindCUDA 构建路径不会可靠设置 `CMAKE_CUDA_COMPILER_VERSION`。
+
+### 2.4 修复 CUDA driver 链接
+
+构建节点的系统 driver 文件不可用于真实 GPU 验证。Codex 在 CUDA 11 兼容分支中让 `CUDA::cuda_driver` **链接期**使用 CUDA 11.8 toolkit 自带的 `lib/stubs/libcuda.so`，确保扩展只保留通用 SONAME：
+
+```text
+DT_NEEDED: libcuda.so.1
+```
+
+toolkit stub 仅用于链接，不能用于导入或运行；部署到 T4 后必须由系统加载真实 NVIDIA driver，必要时加载 `cuda-compat-11-8`。
+
+### 2.5 源码与算子 ABI 调整
+
+| 文件/内核 | Codex 的处理 | 最终状态 |
+|---|---|---|
+| `csrc/cache_kernels.cu`：`concat_and_cache_ds_mla_kernel` | 将 `uint8_t` 量化值显式经 `float` 转为 `cache_t`，消除 CUDA 11 BF16 赋值歧义 | 修复后保留 |
+| `indexer_k_quant_and_cache_kernel` | 通过恢复 BF16 conversions 编译，不裁剪源码 | 保留 |
+| `csrc/quantization/activation_kernels.cu`：DeepGEMM 辅助函数与 `silu_mul_fp8_quant_deep_gemm_kernel` | 用 `VLLM_CUDA11_COMPAT` 排除 CUDA 11 不兼容实现 | 显式裁剪 |
+| `silu_mul_fp8_quant_deep_gemm_cuda` | 保留函数和算子注册；CUDA 11 下调用时明确报错 | ABI 保留 |
+| `act_and_mul_quant_kernel` | 保持在兼容条件块之外 | 保留 |
+| `csrc/moe/grouped_topk_kernels.cu` | 通过恢复 half/half2 运算符和转换完成编译，不改源码 | 保留 |
+| `csrc/moe/moe_permute_unpermute_op.cu`：`moe_permute` | 同步 CUDA 11 stub 与 operator schema 的参数签名 | ABI 修复 |
+| `moe_unpermute`、`shuffle_rows` | 不移植 CUDA 12 kernel；为 CUDA 11 补齐明确报错的 stub | ABI 保留，不支持执行 |
+
+保留 ABI stub 的目的是让 `_moe_C` 和 Python 算子注册正常加载；它不代表 CUDA 11.8 获得了 CUDA 12-only MoE kernel。
+
+### 2.6 回移 Qwen3-VL embedding/pooling 适配
+
+vLLM 0.11.0 已有 pooling 基础设施，但 Qwen3-VL 的生成模型同时在顶层和嵌套 `language_model` 中保留 `lm_head`/`logits_processor`，直接转换会残留生成路径。此次在 `vllm/model_executor/models/adapters.py` 中补齐嵌套清理逻辑，并沿用上游后续版本的通用模型转换方式：
+
+- `Qwen3VLForConditionalGeneration` 在 `convert_type="embed"`、pooling runner 下转换为 `Qwen3VLForEmbedding`。
+- 保留视觉编码器和多模态接口，只移除生成 head 与 logits processor。
+- 加载 checkpoint 时跳过 `lm_head.*`，其余语言模型和视觉权重正常加载。
+- 三个 CPU 回归测试覆盖顶层/嵌套模块清理、生成 head 权重过滤和真实 Qwen3-VL registry 路由；均已通过。
+
+这不是把整个 vLLM 0.14 合并进 0.11.0，而是只回移 Qwen3-VL embedding 所需的最小通用 adapter 行为，降低与 CUDA 11.8 fork 的冲突面。
+
+### 2.7 删除 CUDA 12 的传递依赖
+
+当前 `ray[cgraph]` 会拉取 `cupy-cuda12x`。单张 T4 不使用 Ray CGraph/流水并行，因此本 T4 fork 将 CUDA requirements 改为基础 `ray>=2.48.0`；最终 wheel metadata 和离线 wheelhouse 均不含 `cupy-cuda12x`、CUDA 12 runtime 或 CUDA 12 compat 库。若以后需要流水并行，应另行设计多卡 CUDA 11 依赖，而不能把 `cupy-cuda12x` 混入本环境。
+
+## 3. 最终内核边界
+
+### 3.1 显式裁剪或禁用
+
+- DeepGEMM BF16/FP8 辅助函数。
+- `silu_mul_fp8_quant_deep_gemm_kernel`。
+- CUDA 12-only 的 `moe_permute`、`moe_unpermute`、`shuffle_rows` 实现；仅保留 ABI stub。
+
+### 3.2 修复后保留
+
+- 普通 FP16 SiLU/GELU。
+- `act_and_mul_quant_kernel`。
+- 普通 KV Cache 与 PagedAttention v1/v2。
+- `concat_and_cache_ds_mla_kernel`、`indexer_k_quant_and_cache_kernel` 的可编译模板。
+- MoE grouped-topk。
+- `_C`、`_moe_C`、`cumem_allocator`。
+- SM75 CUTLASS C2x 路径。
+
+### 3.3 由 CMake 根据 SM75 自动跳过
+
+- FlashMLA。
+- FlashAttention 2/3 CUDA kernels。
+- Marlin、Marlin MoE、AllSpark。
+- CUTLASS C3x SM90/SM100/SM120、Sparse C3x、CUTLASS MLA。
+- NVFP4、W4A8、Machete、HadaCore。
+- Hopper/Blackwell grouped MoE 与 SM100 blockwise kernels。
+
+`_vllm_fa2_C` 扩展可以加载，但本构建没有可用于 SM75 的 FA2 CUDA kernel；T4 运行时应使用 XFormers 或已验证的 fallback attention backend。
+
+## 4. 最终构建命令
+
+```bash
+cd /path/to/user-storage/tools/vllm
+bash scripts/build_t4_cu118_glibc228.sh
+```
+
+脚本固定 `sysroot_linux-64=2.28` 构建环境、隔离 CUDA 11.8 view、`TORCH_CUDA_ARCH_LIST=7.5`、`MAX_JOBS=8`、`NVCC_THREADS=1` 和 `CMAKE_BUILD_TYPE=Release`，并把完整输出 `tee` 到 `/path/to/user-storage/tools/vllm/build.log`。如果构建被外部中止，保留 `build/` 后直接重跑脚本，Ninja 会增量续编；不要再次删除缓存，也不要在 32 GiB cgroup 中提高到 16 worker。
+
+链接完成后必须修复 Conda compiler 注入的绝对 RPATH，再用 `wheel pack` 重新生成 RECORD。最终四个扩展只允许以下相对 RUNPATH：
+
+```text
+vllm/*.so: $ORIGIN/../torch/lib:$ORIGIN/../nvidia/cuda_runtime/lib:$ORIGIN/../nvidia/cuda_nvrtc/lib
+vllm/vllm_flash_attn/*.so: $ORIGIN/../../torch/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib
+```
+
+## 5. 产物与验证结果
+
+| 检查项 | 结果 |
+|---|---|
+| Wheel | `dist-torch271/vllm-0.11.0+torch271.cu118-cp310-cp310-linux_x86_64.whl` |
+| 大小 | 约 21 MiB（Release，无调试符号） |
+| SHA256 | `9a46ed2d8c27a4025297b421bf6639d586642d41f84cbd767dde4ff85ca699dc` |
+| XFormers wheel | `xformers-0.0.31-cp39-abi3-linux_x86_64.whl`；SHA256 `5cdbd3a11f836c079e9c50a56ea20a4b4d3d188b29834318a3bd3fdbb6bb91ad` |
+| Wheel 完整性 | `python -m zipfile -t` 通过 |
+| Metadata | `0.11.0+torch271.cu118`；`ray>=2.48.0`，无 `ray[cgraph]`/CuPy CUDA 12 |
+| 原生扩展 | `vllm._C`、`vllm._moe_C`、`vllm.cumem_allocator`、`vllm.vllm_flash_attn._vllm_fa2_C` 均成功导入 |
+| CUDA 动态依赖 | 包含 `libcudart.so.11.0` 和 `libcuda.so.1` |
+| CUDA 架构 | vLLM `_C`、`_moe_C` 与 XFormers `_C.so` 均只包含 `sm_75`；内置 FA2 不提供 T4 可用路径，运行时必须选择 XFormers |
+| PyTorch/torchvision 架构 | `libtorch_cuda.so` 和 `torchvision/_C.so` 均确认包含 `sm_75` |
+| RPATH/RUNPATH | 已移除构建 Conda 环境绝对路径；仅保留指向同一环境 `torch/lib`、`nvidia/cuda_runtime/lib`、`nvidia/cuda_nvrtc/lib` 的 `$ORIGIN` 相对 RUNPATH |
+| `auditwheel show` | 未发现捆绑的 CUDA 12、CuPy CUDA 12 或绝对路径；预期外部依赖为 `libtorch*`、`libc10*`、`libcudart.so.11.0`、`libnvrtc.so.11.2` 和 `libcuda.so.1` |
+| 平台兼容性 | wheel 实际标签为 `linux_x86_64`，`auditwheel` 判定系统符号下限为 `manylinux_2_24_x86_64`；目标机 glibc 2.28 满足要求 |
+| Qwen3-VL pooling | 三个 adapter/registry CPU 回归测试通过；`Qwen3VLForConditionalGeneration` 正确路由为 `Qwen3VLForEmbedding` |
+| `pip check` | 在 `torch==2.7.1+cu118`、`torchvision==0.22.1+cu118`、`xformers==0.0.31` 的完整运行环境中为 `No broken requirements found` |
+| 真实 T4 推理 | 尚未验证 |
+
+构建节点上的**链接**使用 CUDA 11.8 toolkit driver stub；扩展导入时动态链接器实际可能解析到该节点的 CUDA 12.9 compat。因此构建机测试只能证明 wheel、ELF 与算子 ABI 完整，不构成 R450/T4 验证；最终仍需在真实 T4 上验证 NVIDIA driver、XFormers、视觉编码、prefill、decode 和 KV Cache 全链路。
+
+`readelf -d` 已确认扩展只有通用的 `NEEDED: libcuda.so.1`，wheel 内没有打包任何 `libcuda`；相对 RUNPATH 也不包含 driver 路径。构建链接使用 CUDA 11.8 toolkit stub 生成通用 SONAME，目标 T4 上必须解析到真实 NVIDIA driver 或 `/usr/local/cuda-11.8/compat/libcuda.so.1`，严禁使用编译机的 CUDA 12.9 compat 或 toolkit `lib/stubs`。
+
+## 6. 目标 T4 的部署与验收
+
+### 6.1 先检查目标机，不要直接安装
+
+```bash
+uname -m
+ldd --version | head -n 1
+nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total \
+  --format=csv,noheader
+python3.10 -V
+```
+
+本 wheel 的硬性条件如下：
+
+| 项目 | 要求 |
+|---|---|
+| GPU | NVIDIA T4，计算能力 `7.5` |
+| CPU 架构 | `x86_64` |
+| Python | CPython 3.10；wheel 标签为 `cp310-cp310` |
+| glibc | `>=2.28`；本 wheel 的 auditwheel 系统符号下限为 manylinux_2_24，目标 Debian 10 glibc 2.28 已覆盖 |
+| CUDA 用户态 | `torch==2.7.1+cu118`、`torchvision==0.22.1+cu118`、`xformers==0.0.31` |
+| NVIDIA driver | 当前为 `450.191.01`；它满足 CUDA 11.x minor compatibility 的最低版本，但已是 EOL 分支，处理方式见下一节 |
+
+目标机使用预编译 wheel 时不需要安装 `nvcc` 或完整 CUDA Toolkit。`nvidia-smi` 顶部显示的“CUDA Version”只是驱动可支持的最高 CUDA 版本，不代表当前 PyTorch wheel 的运行时版本；安装后必须确认 `torch.version.cuda == "11.8"`。
+
+### 6.2 驱动是 450.191.01 时怎么办
+
+`450.191.01` 高于 NVIDIA [CUDA 11.x minor-version compatibility 规则](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html)要求的 Linux driver `450.80.02`，所以它**不是硬性版本不满足**；纯 `sm_75` cubin 有机会直接运行。但 NVIDIA 同时明确限制：依赖较新 driver 能力的调用会返回 `cudaErrorCallRequiresNewerDriver`，包含新版本 PTX 的程序可能无法由旧 driver 完成 JIT。
+
+本项目自己的 vLLM 扩展已包含 `sm_75` cubin，但 PyTorch、Triton 和 XFormers 仍可能在运行时使用 PTX/JIT，因此 `450.191.01` 不能只做静态版本判断，处理顺序如下：
+
+1. **生产首选：升级 NVIDIA driver。** CUDA 11.8 GA 的配套 Linux driver 为 [`520.61.05`](https://docs.nvidia.com/cuda/archive/11.8.0/cuda-toolkit-release-notes/)，实际应选择不低于该版本且仍在维护的数据中心驱动分支，并继续使用 cu118 wheel。升级 driver 不等于安装 CUDA 12，也不会改变 `torch.version.cuda == "11.8"`。
+2. **不能升级 driver：** T4 属于数据中心 GPU；NVIDIA 的 [CUDA 11.8 历史支持说明](https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-22-09.html)允许 `450.51` 或更高的 R450 使用 driver compatibility package，因此 `450.191.01` 满足这个历史门槛。可由管理员按 NVIDIA [CUDA forward compatibility](https://docs.nvidia.com/deploy/cuda-compatibility/latest/forward-compatibility.html)说明安装 `cuda-compat-11-8`，并把兼容库放到运行时搜索路径首位。但当前 NVIDIA 表格已不再列出 R450，并明确将未列出的 EOL 分支视为不受支持目标，所以这只能作为遗留环境的应急验证方案，不能视为当前生产支持承诺。
+3. **既不能升级也不能安装兼容包：** 可以按 CUDA 11 minor compatibility 做实验性实测，但不能作为生产兼容性承诺；一旦出现 PTX/JIT 或 driver API 错误，应停止绕过并升级 driver。
+
+对当前 wheel 和重新编译的判断如下：
+
+| 问题 | 结论 |
+|---|---|
+| 当前 wheel 能否使用 | **有可能，先用当前 wheel 测试，不需要因 `450.191.01` 先重编**；是否可用以 6.5、6.6 节全链路测试为准 |
+| 加载 `cuda-compat-11-8` 后测试通过 | 当前 wheel 可以继续使用，无需重编 vLLM |
+| 报 PyTorch/vLLM ABI 或缺少 `sm_75` | 对应组件版本或架构不匹配；按本文 wheelhouse 固定版本，必要时重编该组件 |
+| 报 PTX/JIT/driver API 错误 | **只按本文方法重新编译 vLLM 没有用**；源码裁剪解决的是 CUDA 11.8 编译问题，不会改变 R450 的 driver/JIT 能力 |
+| 本文方法还能否编译 | 可以；CUDA 11.8 + `TORCH_CUDA_ARCH_LIST=7.5` 仍能生成相同的 SM75 wheel，但“能编译”不等于“能在 R450 上完整运行” |
+
+如果目标机既不能升级 driver，也不能使用 compatibility package，要真正规避 R450 的 PTX/JIT 限制，就需要把 PyTorch、Triton、torchvision、XFormers 和 vLLM 整套依赖改成适配旧 driver 的工具链并消除运行时 PTX/JIT；这已经超出本文的 vLLM 内核裁剪范围，也不建议作为 vLLM 0.11.0 的交付方案。
+
+管理员先为目标机配置 NVIDIA CUDA 11.8 软件源，再按系统选择其中一条安装命令：
+
+```bash
+# Ubuntu / Debian
+sudo apt install cuda-compat-11-8
+
+# RHEL / Rocky / CentOS 系
+sudo dnf install cuda-compat-11-8
+```
+
+若当前软件源已经下架 CUDA 11.8 包，应使用组织留存或 NVIDIA 官方归档中的原始包，不要从不可信镜像复制 `libcuda.so`。安装后的典型环境变量为：
+
+```bash
+TORCH_LIB=$(python -c 'import pathlib, torch; print(pathlib.Path(torch.__file__).parent / "lib")')
+export LD_LIBRARY_PATH="/usr/local/cuda-11.8/compat:$CONDA_PREFIX/lib:$TORCH_LIB:${LD_LIBRARY_PATH:-}"
+```
+
+`/usr/local/cuda-11.8/compat` 必须来自真实的 `cuda-compat-11-8` 包。**禁止**把 CUDA Toolkit 的 `lib/stubs` 加入目标机 `LD_LIBRARY_PATH`；stub 只用于链接，不能驱动真实 GPU。
+
+若遇到以下任一错误，说明 R450 路径没有通过验收，应升级 driver，而不是继续增加环境变量绕过：
+
+- `cudaErrorCallRequiresNewerDriver`。
+- `CUDA_ERROR_UNSUPPORTED_PTX_VERSION` 或其他 PTX JIT 错误。
+- Triton/XFormers 编译 kernel 失败。
+- `libcuda.so.1` 来自 toolkit stub，或 CUDA 初始化失败。
+
+### 6.3 准备离线 wheelhouse
+
+vLLM wheel 外部依赖目标环境中的 `libtorch*`、`libc10*` 和 CUDA 11 runtime，因此不能只复制一个 vLLM wheel。本次已经准备完整离线目录 `release-t4-cu118-torch271/`，包含：
+
+- 143 个 wheel、约 3.1 GiB，包括官方 `torch==2.7.1+cu118`、`torchvision==0.22.1+cu118` 及全部 CUDA 11 用户态依赖。
+- 定制 `xformers==0.0.31` SM75 wheel 与 `vllm==0.11.0+torch271.cu118` wheel。
+- 普通 vLLM Python 运行依赖、约束文件、安装脚本和真实 T4 验证脚本。
+- 源码裁剪文档、编译日志和 SHA256 清单。
+
+wheelhouse 文件名扫描确认没有 `cupy-cuda12x`、CUDA 12 runtime、`libcuda` 或 compat 库。不要额外安装最新版/通用 PyPI XFormers，也不要安装 torchaudio；这两者都可能使 pip 替换已固定的 PyTorch/CUDA ABI。
+
+最终材料整理到：
+
+```text
+/path/to/user-storage/tools/vllm-qwen3vl-cu118-t4/
+```
+
+### 6.4 在目标机安装
+
+```bash
+cd /path/to/vllm-qwen3vl-cu118-t4
+
+conda env create -f environment.yml
+conda activate vllm-t4-cu118-torch271
+./install_target.sh
+```
+
+安装脚本会先检查 `x86_64`、CPython 3.10、glibc 2.28、SHA256 和 `LD_LIBRARY_PATH`，再完全离线安装固定 wheel，并拒绝 `cupy-cuda12x`。正常 driver 路径不需要人为加入系统 CUDA Toolkit：
+
+```bash
+unset CUDA_HOME
+export VLLM_ATTENTION_BACKEND=XFORMERS
+python verify_target.py
+```
+
+若采用 R450 + `cuda-compat-11-8`，则在执行验证与服务前把 `/usr/local/cuda-11.8/compat` 放在最前面。不得出现 `/usr/local/cuda-12.9/compat`、其他 CUDA 12 compat 路径或任何 toolkit `lib/stubs`。此时 `nvidia-smi` 仍可能显示 R450 对应的 CUDA 能力，这不代表 compat 库未生效；应以真实 CUDA、XFormers 和 vLLM 测试为准。
+
+### 6.5 安装后必须通过的验收
+
+首先检查 PyTorch、T4、vLLM 扩展和 torchvision 算子：
+
+```bash
+python - <<'PY'
+import torch
+import torchvision
+import vllm._C
+import vllm._moe_C
+import vllm.cumem_allocator
+import vllm.vllm_flash_attn._vllm_fa2_C
+
+print("torch:", torch.__version__)
+print("torch CUDA runtime:", torch.version.cuda)
+print("CUDA available:", torch.cuda.is_available())
+print("GPU:", torch.cuda.get_device_name(0))
+print("capability:", torch.cuda.get_device_capability(0))
+
+assert torch.version.cuda == "11.8"
+assert torch.__version__ == "2.7.1+cu118"
+assert torchvision.__version__ == "0.22.1+cu118"
+assert torch.cuda.is_available()
+assert torch.cuda.get_device_capability(0) == (7, 5)
+
+x = torch.randn(1024, 1024, device="cuda", dtype=torch.float16)
+print("CUDA tensor sum:", x.sum().item())
+
+boxes = torch.tensor([[0., 0., 2., 2.], [0., 0., 1., 1.]], device="cuda")
+scores = torch.tensor([0.9, 0.8], device="cuda")
+print("torchvision NMS:", torchvision.ops.nms(boxes, scores, 0.5))
+PY
+```
+
+再检查 XFormers 的构建信息和真实注意力计算：
+
+```bash
+python -m xformers.info
+
+python - <<'PY'
+import torch
+from xformers.ops import memory_efficient_attention
+
+q = torch.randn(1, 128, 8, 64, device="cuda", dtype=torch.float16)
+y = memory_efficient_attention(q, q, q)
+print(y.shape, y.dtype, y.device)
+PY
+```
+
+`xformers.info` 应显示 CUDA 11.8/`1108`、匹配的 PyTorch 版本，并至少有一个适用于 T4 的 memory-efficient attention operator 可用。最后检查动态库和 Python 依赖：
+
+```bash
+ldd "$(python -c 'import vllm._C as m; print(m.__file__)')" \
+  | grep -E 'not found|cuda|torch|c10'
+python -m pip check
+```
+
+`ldd` 不得出现 `not found`，不得解析到任何 toolkit `lib/stubs` 或 CUDA 12 compat 路径；`pip check` 必须输出 `No broken requirements found`。离线包中的 `verify_target.py` 已自动覆盖上述版本、动态库、T4、NMS 与 XFormers 注意力检查。
+
+### 6.6 最小化启动并逐步放量
+
+该 wheel 只承诺 `--dtype half --kv-cache-dtype auto`，不承诺 FP8、DeepGEMM、DeepSeek FP8 MLA、FlashMLA、FA3、Hopper/Blackwell kernel 及 SM75 构建时跳过的量化后端。
+
+先用较小模型或能装入 T4 16 GiB 的 checkpoint 完成链路测试；8B 模型仅 FP16 权重就接近 16 GiB，尚未计入 KV Cache、激活和 CUDA 上下文，通常会 OOM。
+
+```bash
+export VLLM_USE_V1=1
+export VLLM_ATTENTION_BACKEND=XFORMERS
+
+vllm serve /path/to/Qwen3-VL-model \
+  --host 127.0.0.1 \
+  --dtype half \
+  --kv-cache-dtype auto \
+  --enforce-eager \
+  -O0 \
+  --gpu-memory-utilization 0.80 \
+  --max-model-len 2048 \
+  --max-num-seqs 1 \
+  --trust-remote-code
+```
+
+依次完成 `/health`、模型列表、纯文本请求和单图请求，日志必须确认 T4、FP16 和 XFORMERS，并且没有进入本文裁剪的内核。全部通过后，再逐项取消 `--enforce-eager`、提高 `--max-model-len`、`--max-num-seqs` 和显存利用率；不要一次改变多个参数。
+
+### 6.7 常见阻断条件
+
+| 现象 | 处理 |
+|---|---|
+| glibc `< 2.28` | 当前交付目标之外；需在对应更老的 manylinux/sysroot 环境重编并重新审计全部二进制依赖 |
+| Python 不是 3.10 | 新建 Python 3.10 环境 |
+| R450 出现 PTX/JIT/driver API 错误 | 升级到不低于 R520 且仍在维护的分支；若已装 compat 包仍失败，也不要继续绕过 |
+| `libcuda.so.1` 缺失 | 修复真实 NVIDIA driver 或 compat 路径，绝不能使用 toolkit stub |
+| `libcudart.so.11.0` 缺失 | 安装/恢复 cu118 用户态 runtime，并检查环境库路径 |
+| XFormers operator 不可用 | 使用同一 PyTorch/CUDA ABI 和 `sm_75` 重新源码构建 |
+| `no kernel image is available` | 检查相关 torch/vision/XFormers wheel 是否包含 `sm_75` |
+| T4 OOM | 换更小 checkpoint，降低上下文长度、并发和显存利用率 |
+
+## 一句话汇报
+
+面向 T4 / CUDA 11.8 / glibc 2.28，vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 与 CUDA 12-only MoE 内核无法原样编译，我已裁剪不兼容实现并保留 ABI stub、回移 Qwen3-VL embedding/pooling 适配，并基于 PyTorch 2.7.1+cu118 重建和审计 SM75 vLLM/XFormers 离线包；R450.191.01 仍须在真实 T4 上完成端到端验证，具体裁剪内核和部署步骤参考本文。

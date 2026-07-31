@@ -1,0 +1,12 @@
+# Common dependencies
+-r common.txt
+
+numba == 0.60.0; python_version == '3.9' # v0.61 doesn't support Python 3.9. Required for N-gram speculative decoding
+numba == 0.61.2; python_version > '3.9'
+
+# Dependencies for NVIDIA GPUs
+# This T4/CUDA 11.8 single-GPU build intentionally omits the cgraph extra:
+# current Ray packages pull cupy-cuda12x for that extra, while pipeline
+# parallelism is outside this wheel's supported single-T4 runtime boundary.
+ray>=2.48.0
+# https://github.com/facebookresearch/xformers/releases/tag/v0.0.32.post1

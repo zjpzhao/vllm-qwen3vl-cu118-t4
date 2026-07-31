@@ -1,0 +1,207 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 180b896..9b7606b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -168,6 +168,28 @@ endif()
+ #
+ get_torch_gpu_compiler_flags(VLLM_GPU_FLAGS ${VLLM_GPU_LANG})
+ 
++# CUDA 11.x compatibility for Turing-only builds.  FindCUDA exposes the
++# toolkit version through CUDA_VERSION; CMAKE_CUDA_COMPILER_VERSION is not set
++# in this build path, so do not use it for this check.
++if(VLLM_GPU_LANG STREQUAL "CUDA" AND CUDA_VERSION VERSION_LESS 12.0)
++  # Link against the toolkit's driver stub while building.  Some headless
++  # build hosts expose a placeholder libcuda.so; linking that file drops the
++  # libcuda.so.1 DT_NEEDED entry and leaves driver symbols unresolved.
++  set(VLLM_CUDA_DRIVER_STUB
++      "${CUDA_TOOLKIT_ROOT_DIR}/lib/stubs/libcuda.so")
++  if(TARGET CUDA::cuda_driver AND EXISTS "${VLLM_CUDA_DRIVER_STUB}")
++    set_property(TARGET CUDA::cuda_driver PROPERTY
++      IMPORTED_LOCATION "${VLLM_CUDA_DRIVER_STUB}")
++  endif()
++
++  list(APPEND VLLM_GPU_FLAGS
++    "-U__CUDA_NO_HALF_OPERATORS__"
++    "-U__CUDA_NO_HALF_CONVERSIONS__"
++    "-U__CUDA_NO_BFLOAT16_CONVERSIONS__"
++    "-U__CUDA_NO_HALF2_OPERATORS__"
++    "-DVLLM_CUDA11_COMPAT=1")
++endif()
++
+ #
+ # Set nvcc parallelism.
+ #
+diff --git a/csrc/cache_kernels.cu b/csrc/cache_kernels.cu
+index 1286f58..2ecd6cc 100644
+--- a/csrc/cache_kernels.cu
++++ b/csrc/cache_kernels.cu
+@@ -499,9 +499,10 @@ __global__ void concat_and_cache_ds_mla_kernel(
+   // Now all threads in the block scale and write their element
+   const float scale_val = tile_scales[tile_idx];
+   const int64_t dst_idx = dst_idx_start + threadIdx.x;
+-  kv_cache[dst_idx] =
++  const uint8_t quantized =
+       fp8::scaled_convert<uint8_t, scalar_t, Fp8KVCacheDataType::kFp8E4M3>(
+           src_val, scale_val);
++  kv_cache[dst_idx] = static_cast<cache_t>(static_cast<float>(quantized));
+ }
+ 
+ template <typename scalar_t, typename cache_t, Fp8KVCacheDataType kv_dt>
+diff --git a/csrc/moe/moe_permute_unpermute_op.cu b/csrc/moe/moe_permute_unpermute_op.cu
+index ca0c873..9f49369 100644
+--- a/csrc/moe/moe_permute_unpermute_op.cu
++++ b/csrc/moe/moe_permute_unpermute_op.cu
+@@ -185,15 +185,16 @@ void shuffle_rows(const torch::Tensor& input_tensor,
+ 
+ #else
+ 
+-void moe_permute(const torch::Tensor& input, const torch::Tensor& topk_weights,
+-                 torch::Tensor& topk_ids,
++void moe_permute(const torch::Tensor& input,
++                 const torch::Tensor& topk_ids,
+                  const torch::Tensor& token_expert_indices,
+                  const std::optional<torch::Tensor>& expert_map,
+                  int64_t n_expert, int64_t n_local_expert, int64_t topk,
+                  const std::optional<int64_t>& align_block_size,
+                  torch::Tensor& permuted_input,
+                  torch::Tensor& expert_first_token_offset,
+-                 torch::Tensor& src_row_id2dst_row_id_map,
++                 torch::Tensor& inv_permuted_idx,
++                 torch::Tensor& permuted_idx,
+                  torch::Tensor& m_indices) {
+   TORCH_CHECK(false, "moe_permute is not supported on CUDA < 12.0");
+ }
+@@ -206,6 +207,12 @@ void moe_unpermute(
+   TORCH_CHECK(false, "moe_unpermute is not supported on CUDA < 12.0");
+ }
+ 
++void shuffle_rows(const torch::Tensor& input_tensor,
++                  const torch::Tensor& dst2src_map,
++                  torch::Tensor& output_tensor) {
++  TORCH_CHECK(false, "shuffle_rows is not supported on CUDA < 12.0");
++}
++
+ #endif
+ 
+ bool moe_permute_unpermute_supported() {
+@@ -219,4 +226,4 @@ bool moe_permute_unpermute_supported() {
+ TORCH_LIBRARY_IMPL_EXPAND(TORCH_EXTENSION_NAME, CUDA, m) {
+   m.impl("moe_permute", &moe_permute);
+   m.impl("moe_unpermute", &moe_unpermute);
+-}
+\ No newline at end of file
++}
+diff --git a/csrc/quantization/activation_kernels.cu b/csrc/quantization/activation_kernels.cu
+index b94cc9c..306c604 100644
+--- a/csrc/quantization/activation_kernels.cu
++++ b/csrc/quantization/activation_kernels.cu
+@@ -113,6 +113,8 @@ __global__ void act_and_mul_quant_kernel(
+   }
+ }
+ 
++#ifndef VLLM_CUDA11_COMPAT
++
+ __device__ __forceinline__ float silu(float x) {
+   return (__fdividef(x, (1.f + expf(-x))));
+ }
+@@ -442,6 +444,8 @@ __global__ void silu_mul_fp8_quant_deep_gemm_kernel(
+ }
+ #endif
+ 
++#endif  // VLLM_CUDA11_COMPAT
++
+ }  // namespace vllm
+ 
+ // Launch activation, gating, and quantize kernel.
+@@ -481,6 +485,11 @@ void silu_mul_fp8_quant_deep_gemm_cuda(
+     at::Tensor& y_q,           // (E, T, H) [OUT]
+     at::Tensor& y_s,           // (E, T, H//group_size) [OUT]
+     int64_t group_size, bool use_ue8m0, int64_t num_parallel_tokens) {
++#ifdef VLLM_CUDA11_COMPAT
++  TORCH_CHECK(false,
++              "silu_mul_fp8_quant_deep_gemm_cuda requires CUDA 12 or newer; "
++              "this wheel was built in CUDA 11 compatibility mode");
++#else
+ #ifndef USE_ROCM
+   // This kernel relies heavily on cp.async and fp8 support.
+   // This kernel currently only supports H % 128 == 0 and assumes a
+@@ -587,4 +596,5 @@ void silu_mul_fp8_quant_deep_gemm_cuda(
+                           [&] { KERNEL_CALL_TOP_LEVEL });
+ 
+ #endif
++#endif  // VLLM_CUDA11_COMPAT
+ }
+diff --git a/pyproject.toml b/pyproject.toml
+index 88c5c40..28f872a 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -6,7 +6,6 @@ requires = [
+     "packaging>=24.2",
+     "setuptools>=77.0.3,<80.0.0",
+     "setuptools-scm>=8.0",
+-    "torch == 2.8.0",
+     "wheel",
+     "jinja2",
+ ]
+@@ -324,4 +323,3 @@ windo = "windo"
+ [tool.typos.type.vimscript.extend-words]
+ 
+ [tool.uv]
+-no-build-isolation-package = ["torch"]
+diff --git a/requirements/build.txt b/requirements/build.txt
+index 5f826a1..5c57894 100644
+--- a/requirements/build.txt
++++ b/requirements/build.txt
+@@ -4,7 +4,6 @@ ninja
+ packaging>=24.2
+ setuptools>=77.0.3,<80.0.0
+ setuptools-scm>=8
+-torch==2.8.0
+ wheel
+ jinja2>=3.1.6
+ regex
+diff --git a/requirements/cuda.txt b/requirements/cuda.txt
+index 3f8b8fc..a470354 100644
+--- a/requirements/cuda.txt
++++ b/requirements/cuda.txt
+@@ -5,10 +5,8 @@ numba == 0.60.0; python_version == '3.9' # v0.61 doesn't support Python 3.9. Req
+ numba == 0.61.2; python_version > '3.9'
+ 
+ # Dependencies for NVIDIA GPUs
+-ray[cgraph]>=2.48.0 # Ray Compiled Graph, required for pipeline parallelism in V1.
+-torch==2.8.0
+-torchaudio==2.8.0
+-# These must be updated alongside torch
+-torchvision==0.23.0 # Required for phi3v processor. See https://github.com/pytorch/vision?tab=readme-ov-file#installation for corresponding version
++# This T4/CUDA 11.8 single-GPU build intentionally omits the cgraph extra:
++# current Ray packages pull cupy-cuda12x for that extra, while pipeline
++# parallelism is outside this wheel's supported single-T4 runtime boundary.
++ray>=2.48.0
+ # https://github.com/facebookresearch/xformers/releases/tag/v0.0.32.post1
+-xformers==0.0.32.post1; platform_system == 'Linux' and platform_machine == 'x86_64'  # Requires PyTorch >= 2.8
+diff --git a/vllm/model_executor/models/adapters.py b/vllm/model_executor/models/adapters.py
+index c4328a1..0e14ade 100644
+--- a/vllm/model_executor/models/adapters.py
++++ b/vllm/model_executor/models/adapters.py
+@@ -186,10 +186,17 @@ def _create_pooling_model_cls(orig_cls: _T) -> _T:
+ 
+             self.vllm_config = vllm_config
+ 
+-            # These are not used in pooling models
+-            for attr in ("lm_head", "logits_processor"):
+-                if hasattr(self, attr):
+-                    delattr(self, attr)
++            # These are not used in pooling models. Multimodal generation
++            # models such as Qwen3-VL keep them on the nested language model
++            # instead of the top-level module, so clean both locations.
++            objects_to_clean = [self]
++            if language_model := getattr(self, "language_model", None):
++                objects_to_clean.append(language_model)
++
++            for obj in objects_to_clean:
++                for attr in ("lm_head", "logits_processor"):
++                    if hasattr(obj, attr):
++                        delattr(obj, attr)
+ 
+             # If the model already defines a pooler instance, don't overwrite it
+             if not getattr(self, "pooler", None):

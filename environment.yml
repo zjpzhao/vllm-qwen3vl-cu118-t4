@@ -1,0 +1,6 @@
+name: vllm-t4-cu118-torch271
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
