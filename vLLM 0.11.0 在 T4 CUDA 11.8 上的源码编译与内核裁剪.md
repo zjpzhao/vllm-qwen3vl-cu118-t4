@@ -459,7 +459,7 @@ export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
 export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 
 vllm serve /path/to/Qwen3-VL-model \
-  --host 0.0.0.0 \
+  --host :: \
   --port 8000 \
   --served-model-name Qwen3-VL-Embedding-2B \
   --runner pooling \
@@ -478,6 +478,20 @@ vllm serve /path/to/Qwen3-VL-model \
   --trust-remote-code
 ```
 
+这里使用 `--host ::` 是为了让服务监听 IPv6。若启动后
+`ss -lntp | grep ':8000'` 只显示 `0.0.0.0:8000`，则该 socket 仅接受 IPv4，
+通过 `http://[IPv6]:8000` 访问会失败。可在激活目标 Conda 环境后使用发布目录的
+重启脚本：
+
+```bash
+cd /root/vllm-qwen3vl-cu118-t4
+chmod +x restart_vllm_server_ipv6.sh
+./restart_vllm_server_ipv6.sh
+```
+
+脚本仅终止当前占用 8000 端口的进程，等待其正常退出后以本文完整参数后台启动；
+PID 和日志分别保存为 `vllm_server.pid`、`vllm_server.log`。
+
 日志必须出现 `Using XFormers backend on V1 engine` 和支持任务
 `['encode', 'embed']`。T4 上关于 FA2 需要 compute capability >= 8 的信息是
 后端探测结果，只要随后明确使用 XFormers 就不影响运行。
@@ -487,7 +501,23 @@ vllm serve /path/to/Qwen3-VL-model \
 ```bash
 curl -f http://127.0.0.1:8000/health
 curl -s http://127.0.0.1:8000/v1/models | python -m json.tool
+curl --noproxy '*' -g http://[::1]:8000/health
 ```
+
+从开发机请求目标机 IPv6 时，应清除环境代理再测试：
+
+```bash
+TARGET_IPV6='<TARGET_IPV6>'
+env \
+  -u http_proxy -u https_proxy \
+  -u HTTP_PROXY -u HTTPS_PROXY \
+  -u all_proxy -u ALL_PROXY \
+  curl -f -g "http://[${TARGET_IPV6}]:8000/health"
+```
+
+若未绕过代理，HTML 格式的 521/502 是代理响应而非 vLLM 响应；这类失败请求的
+低延迟和高吞吐量不能用于性能结论。Python `requests`/`httpx` 客户端应分别设置
+`Session.trust_env = False` 或 `trust_env=False`。
 
 再按发布目录 `README.md` 的 `/v1/embeddings` 请求完成文本验收。成功判据为：
 模型名正确、向量维度 2048、全部数值有限、L2 norm 与 1.0 的差小于 0.02。
@@ -513,6 +543,7 @@ embedding 请求的 `image_url` 内容块；图片通过前不得把文本验收
 | `Unsupported conversion from f16 to f16` | 确认已应用 `apply_t4_xformers_hotfix.py`、后端为 XFORMERS，并关闭 prefix caching/chunked prefill |
 | `no kernel image is available` | 检查相关 torch/vision/XFormers wheel 是否包含 `sm_75` |
 | T4 OOM | 换更小 checkpoint，降低上下文长度、并发和显存利用率 |
+| IPv6 请求返回代理 HTML 521/502 | 服务使用 `--host ::`，开发机清除代理或设置客户端 `trust_env=False`；先以 `/health` 的 HTTP 200 验证直连 |
 
 ## 一句话汇报
 

@@ -47,7 +47,7 @@ mkdir -p "${TRITON_CACHE_DIR}"
 set -o pipefail
 
 vllm serve /root/Qwen3-VL-Embedding-2B \
-  --host 0.0.0.0 \
+  --host :: \
   --port 8000 \
   --served-model-name Qwen3-VL-Embedding-2B \
   --runner pooling \
@@ -67,6 +67,22 @@ vllm serve /root/Qwen3-VL-Embedding-2B \
   2>&1 | tee vllm_server.log
 ```
 
+`--host ::` 用于监听 IPv6；若 `ss -lntp | grep ':8000'` 仅显示
+`0.0.0.0:8000`，则通过 `http://[IPv6]:8000` 访问一定失败。已经按旧参数启动时，
+在激活目标 Conda 环境后使用仓库脚本安全重启：
+
+```bash
+conda activate vllm-t4-cu118-torch271
+cd /root/vllm-qwen3vl-cu118-t4
+chmod +x restart_vllm_server_ipv6.sh
+./restart_vllm_server_ipv6.sh
+```
+
+脚本会向当前监听 8000 端口的进程发送 `SIGTERM`，最多等待 30 秒，然后使用
+上述完整参数在后台启动服务；PID 写入 `vllm_server.pid`，输出写入
+`vllm_server.log`。如模型或端口不同，可在命令前设置 `MODEL_PATH`、
+`SERVED_MODEL_NAME` 或 `PORT`。
+
 启动日志必须包含 `Using XFormers backend on V1 engine` 和
 `Supported_tasks: ['encode', 'embed']`。T4 不支持 FA2，因此
 `FA2 is only supported on devices with compute capability >= 8` 是后端探测信息，
@@ -79,7 +95,24 @@ vllm serve /root/Qwen3-VL-Embedding-2B \
 ```bash
 curl -f http://127.0.0.1:8000/health
 curl -s http://127.0.0.1:8000/v1/models | python -m json.tool
+curl --noproxy '*' -g http://[::1]:8000/health
 ```
+
+从开发机通过目标 IPv6 地址访问时，必须绕过本机 HTTP/HTTPS/SOCKS 代理；否则
+代理可能快速返回 HTML 格式的 `521 Web Server Is Down`，该响应不是 vLLM 生成的：
+
+```bash
+TARGET_IPV6='<TARGET_IPV6>'
+env \
+  -u http_proxy -u https_proxy \
+  -u HTTP_PROXY -u HTTPS_PROXY \
+  -u all_proxy -u ALL_PROXY \
+  curl -f -g "http://[${TARGET_IPV6}]:8000/health"
+```
+
+Python 客户端还应使用 `requests.Session().trust_env = False` 或
+`httpx.Client(trust_env=False)`。测速前必须先确认健康检查为 HTTP 200；521/502 等
+失败响应的耗时和吞吐量不能作为模型性能数据。
 
 发送与离线验证脚本相同模板的文本 embedding 请求：
 
