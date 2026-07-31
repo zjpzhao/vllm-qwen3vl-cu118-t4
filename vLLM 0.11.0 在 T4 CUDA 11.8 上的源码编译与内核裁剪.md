@@ -1,8 +1,48 @@
+[GitHub 仓库：https://github.com/zjpzhao/vllm-qwen3vl-cu118-t4](https://github.com/zjpzhao/vllm-qwen3vl-cu118-t4)
+
 # 面向 NVIDIA T4 / CUDA 11.8 / glibc 2.28 的 vLLM 0.11.0 Qwen3-VL Embedding 回移与内核裁剪
+
+## 修改与裁剪摘要
+
+本项目以 vLLM 0.11.0 为基线，为 NVIDIA T4（SM75）、CUDA 11.8、glibc
+2.28 和 PyTorch 2.7.1+cu118 建立了独立构建与运行边界，主要修改如下：
+
+- **固定构建工具链：** 使用 nvcc 11.8.89、GCC/G++ 11.4、glibc 2.28
+  sysroot 和 `TORCH_CUDA_ARCH_LIST=7.5`，避免误用编译机 CUDA 12.9，并只生成
+  T4 的 `sm_75` 设备代码。
+- **恢复 CUDA 11 编译能力：** 重新启用 half、half2 和 BF16 运算符/转换，增加
+  `VLLM_CUDA11_COMPAT` 条件，只隔离 CUDA 11.8 无法实例化的实现。
+- **显式裁剪 DeepGEMM BF16/FP8 路径：** 不编译 DeepGEMM BF16/FP8 辅助函数
+  和 `silu_mul_fp8_quant_deep_gemm_kernel`；保留算子注册和明确报错入口，维持
+  Python/C++ ABI 完整。
+- **裁剪 CUDA 12-only MoE 实现：** 不移植 `moe_permute`、
+  `moe_unpermute`、`shuffle_rows` 的 CUDA 12 kernel，在 CUDA 11 分支保留
+  与 operator schema 一致的报错 stub，使 `_moe_C` 可以正常加载。
+- **修复并保留通用 SM75 内核：** 修复 KV Cache BF16 赋值歧义和 MoE stub
+  签名，保留普通 FP16 SiLU/GELU、`act_and_mul_quant_kernel`、PagedAttention、
+  KV Cache、MoE grouped-topk 和 CUTLASS C2x 路径。
+- **按 SM75 自动跳过高架构内核：** 不构建 FlashMLA、FA2/FA3 CUDA kernel、
+  Marlin、Machete、NVFP4、W4A8、CUTLASS C3x SM90/SM100/SM120 以及
+  Hopper/Blackwell 专用实现。
+- **回移 Qwen3-VL embedding/pooling：** 将后续版本的最小通用 adapter 行为
+  回移到 0.11.0，使 `Qwen3VLForConditionalGeneration` 可转换为
+  `Qwen3VLForEmbedding`，并清理生成 head、过滤 `lm_head.*` 权重。
+- **绕开 T4 Triton Attention 阻断：** 增加可恢复的
+  `apply_t4_xformers_hotfix.py`，对纯 prefill embedding 使用预编译的 xFormers
+  CUTLASS contiguous attention，避开 SM75 上失败的 Triton Unified/Flex
+  Attention；该路径要求关闭 prefix caching 和 chunked prefill。
+- **清理 CUDA 12 传递依赖与动态链接：** 移除 `ray[cgraph]` 引入的
+  `cupy-cuda12x`，修复相对 RUNPATH，确保 wheel 不捆绑 CUDA 12 compat、
+  toolkit stub 或构建机绝对路径。
+
+最终交付只保证 FP16、KV Cache dtype `auto`、XFormers attention 和
+pooling/embedding 纯 prefill，不支持上述裁剪内核、FP8/DeepGEMM、文本生成
+decode、prefix caching 或 chunked prefill。文本 Embedding API 已在真实 T4、
+R450.191.01、glibc 2.28 与 `cuda-compat-11-8` 环境验证通过。
 
 ## 结论
 
-vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 模板依赖 CUDA 12 才满足的接口、编译宏组合和更高 GPU 架构能力，无法在 CUDA 11.8 + SM75 下原样编译。Codex 将源码调整为一个**仅面向 NVIDIA T4（SM75）、glibc 2.28、以 FP16 为受支持运行边界的 CUDA 11.8 wheel**：恢复 CUDA 11 的 half/BF16 编译能力，裁剪不兼容的 DeepGEMM 实现，为 CUDA 12-only MoE 算子保留 ABI stub，修复 CUDA driver 链接，并把 vLLM 0.14 的通用多模态 embedding/pooling 适配方式回移到 0.11.0，使 `Qwen3VLForConditionalGeneration` 能转换为 `Qwen3VLForEmbedding`。
+vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 模板依赖 CUDA 12 才满足的接口、编译宏组合和更高 GPU 架构能力，无法在 CUDA 11.8 + SM75 下原样编译。本项目将源码调整为一个**仅面向 NVIDIA T4（SM75）、glibc 2.28、以 FP16 为受支持运行边界的 CUDA 11.8 wheel**：恢复 CUDA 11 的 half/BF16 编译能力，裁剪不兼容的 DeepGEMM 实现，为 CUDA 12-only MoE 算子保留 ABI stub，修复 CUDA driver 链接，并把 vLLM 后续版本的通用多模态 embedding/pooling 适配方式回移到 0.11.0，使 `Qwen3VLForConditionalGeneration` 能转换为 `Qwen3VLForEmbedding`。
 
 当前已使用稳定版 PyTorch 2.7.1+cu118 完成 vLLM 与 XFormers wheel 构建、安装、原生扩展导入、相对 RUNPATH、`auditwheel show` 和 Qwen3-VL pooling 路由回归测试，并已在真实 T4、R450.191.01、glibc 2.28 与 `cuda-compat-11-8` 环境完成离线推理和 OpenAI Embedding API 端到端验证。
 
@@ -24,11 +64,11 @@ vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 模板依赖 CUDA 12 才满足的接口�
 
 这里的“FP16 wheel”表示受支持的运行配置，不表示二进制中不存在任何 FP8 模板或符号。
 
-## 2. Codex 的实际改动
+## 2. 实际改动
 
 ### 2.1 固定 CUDA 11.8 与 SM75 工具链
 
-Codex 将构建工具链固定为：
+构建工具链固定为：
 
 ```bash
 export BUILD_ENV=/path/to/user-storage/miniconda3/envs/vllm-cu118-torch271-sysroot
@@ -55,7 +95,7 @@ export VLLM_TARGET_DEVICE=cuda
 
 ### 2.2 固定本地依赖
 
-为避免 CMake 在构建过程中联网，Codex 使用 vLLM 0.11.0 对应的固定源码：
+为避免 CMake 在构建过程中联网，构建过程使用 vLLM 0.11.0 对应的固定源码：
 
 | 依赖 | 版本/commit | 环境变量 |
 |---|---|---|
@@ -79,7 +119,7 @@ XFormers 使用官方 v0.0.31 源码重新构建：其 wheel metadata 为 `xform
 
 ### 2.3 增加 CUDA 11 兼容编译条件
 
-Codex 在 `CMakeLists.txt` 中使用 FindCUDA 实际提供的 `CUDA_VERSION` 判断 CUDA 11，并追加：
+在 `CMakeLists.txt` 中使用 FindCUDA 实际提供的 `CUDA_VERSION` 判断 CUDA 11，并追加：
 
 ```cmake
 if(VLLM_GPU_LANG STREQUAL "CUDA" AND CUDA_VERSION VERSION_LESS 12.0)
@@ -101,7 +141,7 @@ endif()
 
 ### 2.4 修复 CUDA driver 链接
 
-构建节点的系统 driver 文件不可用于真实 GPU 验证。Codex 在 CUDA 11 兼容分支中让 `CUDA::cuda_driver` **链接期**使用 CUDA 11.8 toolkit 自带的 `lib/stubs/libcuda.so`，确保扩展只保留通用 SONAME：
+构建节点的系统 driver 文件不可用于真实 GPU 验证。在 CUDA 11 兼容分支中，`CUDA::cuda_driver` **链接期**使用 CUDA 11.8 toolkit 自带的 `lib/stubs/libcuda.so`，确保扩展只保留通用 SONAME：
 
 ```text
 DT_NEEDED: libcuda.so.1
@@ -111,7 +151,7 @@ toolkit stub 仅用于链接，不能用于导入或运行；部署到 T4 后必
 
 ### 2.5 源码与算子 ABI 调整
 
-| 文件/内核 | Codex 的处理 | 最终状态 |
+| 文件/内核 | 处理方式 | 最终状态 |
 |---|---|---|
 | `csrc/cache_kernels.cu`：`concat_and_cache_ds_mla_kernel` | 将 `uint8_t` 量化值显式经 `float` 转为 `cache_t`，消除 CUDA 11 BF16 赋值歧义 | 修复后保留 |
 | `indexer_k_quant_and_cache_kernel` | 通过恢复 BF16 conversions 编译，不裁剪源码 | 保留 |
