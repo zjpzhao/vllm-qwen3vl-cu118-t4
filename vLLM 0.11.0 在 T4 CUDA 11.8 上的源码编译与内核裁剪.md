@@ -514,7 +514,8 @@ MAX_NUM_SEQS=8 MAX_NUM_BATCHED_TOKENS=4096 \
 显式设置 `PORT=8000` 可避免 shell 中遗留的其他端口值被脚本继承。
 
 脚本仅终止当前占用 8000 端口的进程，等待其正常退出后以本文完整参数后台启动；
-PID 和日志分别保存为 `vllm_server.pid`、`vllm_server.log`。
+PID 和日志分别保存为 `vllm_server.pid`、`logs/vllm_server.log`。日志目录由脚本
+自动创建，也可通过 `LOG_DIR` 或 `LOG_FILE` 覆盖。
 
 日志必须出现 `Using XFormers backend on V1 engine` 和支持任务
 `['encode', 'embed']`。T4 上关于 FA2 需要 compute capability >= 8 的信息是

@@ -49,6 +49,7 @@ export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}
 
 mkdir -p "${TRITON_CACHE_DIR}"
+mkdir -p logs
 set -o pipefail
 
 vllm serve /root/Qwen3-VL-Embedding-2B \
@@ -71,7 +72,7 @@ vllm serve /root/Qwen3-VL-Embedding-2B \
   --tensor-parallel-size 1 \
   --limit-mm-per-prompt '{"image":1,"video":0}' \
   --trust-remote-code \
-  2>&1 | tee vllm_server.log
+  2>&1 | tee logs/vllm_server.log
 ```
 
 `--host ::` 用于监听 IPv6；若 `ss -lntp | grep ':8000'` 仅显示
@@ -87,7 +88,8 @@ chmod +x restart_vllm_server_ipv6.sh
 
 脚本会向当前监听 8000 端口的进程发送 `SIGTERM`，最多等待 30 秒，然后使用
 上述完整参数在后台启动服务；PID 写入 `vllm_server.pid`，输出写入
-`vllm_server.log`。如模型或端口不同，可在命令前设置 `MODEL_PATH`、
+`logs/vllm_server.log`。脚本会自动创建日志目录；可用 `LOG_DIR` 修改默认日志
+目录，或用 `LOG_FILE` 指定完整日志路径。如模型或端口不同，可在命令前设置 `MODEL_PATH`、
 `SERVED_MODEL_NAME`、`PORT`、`MAX_MODEL_LEN`、`MAX_NUM_SEQS`、
 `MAX_NUM_BATCHED_TOKENS`。脚本默认允许每个调度 iteration
 合批 8 条序列，并把总 token budget 设为 4096；旧版的

@@ -5,7 +5,8 @@ MODEL_PATH="${MODEL_PATH:-/root/Qwen3-VL-Embedding-2B}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3-VL-Embedding-2B}"
 PORT="${PORT:-8000}"
 REPO_DIR="${REPO_DIR:-/root/vllm-qwen3vl-cu118-t4}"
-LOG_FILE="${LOG_FILE:-${REPO_DIR}/vllm_server.log}"
+LOG_DIR="${LOG_DIR:-${REPO_DIR}/logs}"
+LOG_FILE="${LOG_FILE:-${LOG_DIR}/vllm_server.log}"
 PID_FILE="${PID_FILE:-${REPO_DIR}/vllm_server.pid}"
 IMAGE_LIMIT="${IMAGE_LIMIT:-1}"
 VIDEO_LIMIT="${VIDEO_LIMIT:-0}"
@@ -48,6 +49,7 @@ if [[ ! -d "${MODEL_PATH}" ]]; then
 fi
 
 cd "${REPO_DIR}"
+mkdir -p "$(dirname "${LOG_FILE}")" "$(dirname "${PID_FILE}")"
 
 listener_pid() {
   ss -H -lntp "sport = :${PORT}" 2>/dev/null \
