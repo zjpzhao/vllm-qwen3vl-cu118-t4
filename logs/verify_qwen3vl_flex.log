@@ -1,0 +1,905 @@
+INFO 07-31 16:03:13 [__init__.py:216] Automatically detected platform cuda.
+INFO 07-31 16:03:18 [utils.py:233] non-default args: {'runner': 'pooling', 'convert': 'embed', 'trust_remote_code': True, 'dtype': 'half', 'max_model_len': 2048, 'gpu_memory_utilization': 0.8, 'disable_log_stats': True, 'enforce_eager': True, 'limit_mm_per_prompt': {'image': 0, 'video': 0}, 'pooler_config': PoolerConfig(pooling_type='LAST', normalize=True, dimensions=None, enable_chunked_processing=None, max_embed_len=None, activation=None, logit_bias=None, softmax=None, step_tag_id=None, returned_token_ids=None), 'model': '/root/Qwen3-VL-Embedding-2B'}
+The argument `trust_remote_code` is to be used with Auto classes. It has no effect here and is ignored.
+INFO 07-31 16:03:18 [config.py:841] Found sentence-transformers tokenize configuration.
+INFO 07-31 16:03:18 [model.py:547] Resolved architecture: Qwen3VLForConditionalGeneration
+INFO 07-31 16:03:18 [config.py:739] Found sentence-transformers modules configuration.
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 07-31 16:03:18 [model.py:1733] Casting torch.bfloat16 to torch.float16.
+INFO 07-31 16:03:18 [model.py:1510] Using max model len 2048
+INFO 07-31 16:03:18 [arg_utils.py:1575] (Enabling) chunked prefill by default
+INFO 07-31 16:03:18 [arg_utils.py:1578] (Enabling) prefix caching by default
+INFO 07-31 16:03:19 [scheduler.py:205] Chunked prefill is enabled with max_num_batched_tokens=8192.
+INFO 07-31 16:03:19 [__init__.py:381] Cudagraph is disabled under eager mode
+INFO 07-31 16:03:22 [registry.py:117] All limits of multimodal modalities supported by the model are set to 0, running in text-only mode.
+WARNING 07-31 16:03:22 [__init__.py:3036] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+INFO 07-31 16:03:27 [__init__.py:216] Automatically detected platform cuda.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:29 [core.py:644] Waiting for init message from front-end.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:29 [core.py:77] Initializing a V1 LLM engine (v0.11.0+torch271) with config: model='/root/Qwen3-VL-Embedding-2B', speculative_config=None, tokenizer='/root/Qwen3-VL-Embedding-2B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.float16, max_seq_len=2048, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=True, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser=''), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None), seed=0, served_model_name=/root/Qwen3-VL-Embedding-2B, enable_prefix_caching=True, chunked_prefill_enabled=True, pooler_config=PoolerConfig(pooling_type='LAST', normalize=True, dimensions=None, enable_chunked_processing=None, max_embed_len=None, activation=None, logit_bias=None, softmax=None, step_tag_id=None, returned_token_ids=None), compilation_config={"level":0,"debug_dump_path":"","cache_dir":"","backend":"","custom_ops":[],"splitting_ops":null,"use_inductor":true,"compile_sizes":[],"inductor_compile_config":{"enable_auto_functionalized_v2":false},"inductor_passes":{},"cudagraph_mode":0,"use_cudagraph":true,"cudagraph_num_of_warmups":0,"cudagraph_capture_sizes":[],"cudagraph_copy_inputs":false,"full_cuda_graph":false,"use_inductor_graph_partition":false,"pass_config":{},"max_capture_size":0,"local_cache_dir":null}
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:32 [config.py:841] Found sentence-transformers tokenize configuration.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:33 [registry.py:117] All limits of multimodal modalities supported by the model are set to 0, running in text-only mode.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:33 [fa_utils.py:57] Cannot use FA version 2 is not supported due to FA2 is only supported on devices with compute capability >= 8
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:33 [parallel_state.py:1208] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, TP rank 0, EP rank 0
+[1;36m(EngineCore_DP0 pid=116603)[0;0m WARNING 07-31 16:03:34 [topk_topp_sampler.py:66] FlashInfer is not available. Falling back to the PyTorch-native implementation of top-p & top-k sampling. For the best performance, please install FlashInfer.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:34 [gpu_model_runner.py:2602] Starting to load model /root/Qwen3-VL-Embedding-2B...
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:34 [gpu_model_runner.py:2634] Loading model from scratch...
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:34 [cuda.py:319] Using FlexAttention backend on V1 engine.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+[1;36m(EngineCore_DP0 pid=116603)[0;0m Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:03<00:00,  3.72s/it]
+[1;36m(EngineCore_DP0 pid=116603)[0;0m Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:03<00:00,  3.73s/it]
+[1;36m(EngineCore_DP0 pid=116603)[0;0m 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:38 [default_loader.py:267] Loading weights took 3.87 seconds
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:39 [gpu_model_runner.py:2653] Model loading took 3.4554 GiB and 4.078180 seconds
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:43 [gpu_worker.py:298] Available KV cache memory: 7.90 GiB
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:43 [kv_cache_utils.py:1087] GPU KV cache size: 73,984 tokens
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:43 [kv_cache_utils.py:1091] Maximum concurrency for 2,048 tokens per request: 36.12x
+[1;36m(EngineCore_DP0 pid=116603)[0;0m WARNING 07-31 16:03:43 [cudagraph_dispatcher.py:106] cudagraph dispatching keys are not initialized. No cudagraph will be used.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:43 [core.py:210] init engine (profile, create kv cache, warmup model) took 4.17 seconds
+[1;36m(EngineCore_DP0 pid=116603)[0;0m INFO 07-31 16:03:44 [__init__.py:381] Cudagraph is disabled under eager mode
+INFO 07-31 16:03:44 [llm.py:306] Supported_tasks: ['embed']
+Unsupported conversion from f16 to f16
+LLVM ERROR: Unsupported rounding mode for conversion.
+#blocked = #ttg.blocked<{sizePerThread = [2, 2], threadsPerWarp = [2, 16], warpsPerCTA = [4, 1], order = [1, 0]}>
+#blocked1 = #ttg.blocked<{sizePerThread = [4, 4], threadsPerWarp = [1, 32], warpsPerCTA = [4, 1], order = [1, 0]}>
+#blocked2 = #ttg.blocked<{sizePerThread = [8, 1], threadsPerWarp = [16, 2], warpsPerCTA = [1, 4], order = [0, 1]}>
+#blocked3 = #ttg.blocked<{sizePerThread = [1, 8], threadsPerWarp = [2, 16], warpsPerCTA = [4, 1], order = [1, 0]}>
+#shared = #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [1, 0]}>
+#shared1 = #ttg.swizzled_shared<{vec = 1, perPhase = 1, maxPhase = 1, order = [0, 1]}>
+#smem = #ttg.shared_memory
+module attributes {"ttg.num-ctas" = 1 : i32, "ttg.num-warps" = 4 : i32, ttg.target = "cuda:75", "ttg.threads-per-warp" = 32 : i32} {
+  tt.func public @triton_tem_fused_0(%arg0: !tt.ptr<f16> {tt.divisibility = 16 : i32}, %arg1: !tt.ptr<f16> {tt.divisibility = 16 : i32}, %arg2: !tt.ptr<f16> {tt.divisibility = 16 : i32}, %arg3: !tt.ptr<f32> {tt.divisibility = 16 : i32}, %arg4: !tt.ptr<i32> {tt.divisibility = 16 : i32}, %arg5: !tt.ptr<i32> {tt.divisibility = 16 : i32}, %arg6: !tt.ptr<i32> {tt.divisibility = 16 : i32}, %arg7: !tt.ptr<i32> {tt.divisibility = 16 : i32}, %arg8: !tt.ptr<i32> {tt.divisibility = 16 : i32}, %arg9: !tt.ptr<i64> {tt.divisibility = 16 : i32}, %arg10: !tt.ptr<i32> {tt.divisibility = 16 : i32}, %arg11: !tt.ptr<i32> {tt.divisibility = 16 : i32}, %arg12: !tt.ptr<i32> {tt.divisibility = 16 : i32}, %arg13: !tt.ptr<f16> {tt.divisibility = 16 : i32}) attributes {noinline = false} {
+    %cst = arith.constant dense<0.000000e+00> : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+    %cst_0 = arith.constant dense<1.000000e+00> : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+    %cst_1 = arith.constant dense<0.000000e+00> : tensor<32x128xf32, #blocked1>
+    %cst_2 = arith.constant dense<0.0883883461> : tensor<32x32xf32, #blocked>
+    %cst_3 = arith.constant dense<0xFF800000> : tensor<32x32xf32, #blocked>
+    %cst_4 = arith.constant dense<1.44269502> : tensor<32x32xf32, #blocked>
+    %cst_5 = arith.constant dense<0xFF800000> : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+    %c2312_i32 = arith.constant 2312 : i32
+    %c96_i32 = arith.constant 96 : i32
+    %cst_6 = arith.constant dense<0.000000e+00> : tensor<32x32xf32, #blocked>
+    %cst_7 = arith.constant dense<0.000000e+00> : tensor<128x32xf16, #blocked2>
+    %cst_8 = arith.constant dense<0.000000e+00> : tensor<32x128xf16, #blocked3>
+    %c16_i32 = arith.constant 16 : i32
+    %c1_i32 = arith.constant 1 : i32
+    %c128_i32 = arith.constant 128 : i32
+    %c75776_i32 = arith.constant 75776 : i32
+    %c2_i32 = arith.constant 2 : i32
+    %c578_i32 = arith.constant 578 : i32
+    %c32_i32 = arith.constant 32 : i32
+    %c4_i32 = arith.constant 4 : i32
+    %c0_i32 = arith.constant 0 : i32
+    %cst_9 = arith.constant dense<37> : tensor<32x1xi32, #blocked>
+    %cst_10 = arith.constant dense<37> : tensor<32x1xi32, #blocked3>
+    %cst_11 = arith.constant dense<128> : tensor<1x128xi32, #blocked3>
+    %cst_12 = arith.constant dense<2048> : tensor<32x1xi32, #blocked3>
+    %cst_13 = arith.constant dense<0> : tensor<1x32xi32, #blocked>
+    %cst_14 = arith.constant dense<1> : tensor<1x32xi32, #blocked>
+    %cst_15 = arith.constant dense<false> : tensor<32x32xi1, #blocked>
+    %cst_16 = arith.constant dense<73984> : tensor<32x1xi64, #blocked3>
+    %cst_17 = arith.constant dense<1024> : tensor<32x1xi64, #blocked3>
+    %cst_18 = arith.constant dense<73984> : tensor<1x32xi64, #blocked2>
+    %cst_19 = arith.constant dense<1024> : tensor<1x32xi64, #blocked2>
+    %cst_20 = arith.constant dense<37> : tensor<32x1xi64, #blocked3>
+    %cst_21 = arith.constant dense<0> : tensor<32x1xi64, #blocked3>
+    %cst_22 = arith.constant dense<2048> : tensor<32x1xi64, #blocked3>
+    %cst_23 = arith.constant dense<73984> : tensor<1x32xi32, #blocked>
+    %cst_24 = arith.constant dense<16> : tensor<1x32xi64, #blocked>
+    %cst_25 = arith.constant dense<0> : tensor<1x32xi64, #blocked2>
+    %cst_26 = arith.constant dense<0> : tensor<1x32xi64, #blocked>
+    %cst_27 = arith.constant dense<16> : tensor<1x32xi32, #blocked>
+    %0 = tt.get_program_id x : i32
+    %1 = tt.get_program_id y : i32
+    %2 = arith.divsi %1, %c16_i32 : i32
+    %3 = arith.remsi %1, %c16_i32 : i32
+    %4 = arith.divsi %3, %c2_i32 : i32
+    %5 = arith.muli %2, %c75776_i32 : i32
+    %6 = arith.muli %3, %c128_i32 : i32
+    %7 = arith.addi %5, %6 : i32
+    %8 = arith.muli %4, %c128_i32 : i32
+    %9 = tt.addptr %arg0, %7 : !tt.ptr<f16>, i32
+    %10 = tt.addptr %arg1, %8 : !tt.ptr<f16>, i32
+    %11 = tt.addptr %arg2, %8 : !tt.ptr<f16>, i32
+    %12 = arith.muli %0, %c32_i32 : i32
+    %13 = tt.make_range {end = 32 : i32, start = 0 : i32} : tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked3}>>
+    %14 = tt.make_range {end = 32 : i32, start = 0 : i32} : tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked}>>
+    %15 = tt.make_range {end = 32 : i32, start = 0 : i32} : tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked2}>>
+    %16 = tt.make_range {end = 32 : i32, start = 0 : i32} : tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked}>>
+    %17 = tt.splat %12 : i32 -> tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked}>>
+    %18 = tt.splat %12 : i32 -> tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked3}>>
+    %19 = arith.addi %17, %14 : tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked}>>
+    %20 = arith.addi %18, %13 : tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked3}>>
+    %21 = arith.divsi %0, %c4_i32 : i32
+    %22 = arith.muli %21, %c578_i32 : i32
+    %23 = arith.extsi %12 : i32 to i64
+    %24 = tt.splat %9 : !tt.ptr<f16> -> tensor<32x128x!tt.ptr<f16>, #blocked3>
+    %25 = tt.splat %23 : i64 -> tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>>
+    %26 = arith.extsi %13 : tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked3}>> to tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>>
+    %27 = arith.extsi %15 : tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked2}>> to tensor<32xi64, #ttg.slice<{dim = 0, parent = #blocked2}>>
+    %28 = arith.addi %25, %26 : tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>>
+    %29 = tt.expand_dims %28 {axis = 1 : i32} : tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>> -> tensor<32x1xi64, #blocked3>
+    %30 = arith.muli %29, %cst_22 : tensor<32x1xi64, #blocked3>
+    %31 = tt.broadcast %30 : tensor<32x1xi64, #blocked3> -> tensor<32x128xi64, #blocked3>
+    %32 = tt.make_range {end = 128 : i32, start = 0 : i32} : tensor<128xi32, #ttg.slice<{dim = 0, parent = #blocked3}>>
+    %33 = tt.make_range {end = 128 : i32, start = 0 : i32} : tensor<128xi32, #ttg.slice<{dim = 1, parent = #blocked2}>>
+    %34 = arith.extsi %32 : tensor<128xi32, #ttg.slice<{dim = 0, parent = #blocked3}>> to tensor<128xi64, #ttg.slice<{dim = 0, parent = #blocked3}>>
+    %35 = arith.extsi %33 : tensor<128xi32, #ttg.slice<{dim = 1, parent = #blocked2}>> to tensor<128xi64, #ttg.slice<{dim = 1, parent = #blocked2}>>
+    %36 = tt.expand_dims %34 {axis = 0 : i32} : tensor<128xi64, #ttg.slice<{dim = 0, parent = #blocked3}>> -> tensor<1x128xi64, #blocked3>
+    %37 = tt.broadcast %36 : tensor<1x128xi64, #blocked3> -> tensor<32x128xi64, #blocked3>
+    %38 = arith.addi %31, %37 : tensor<32x128xi64, #blocked3>
+    %39 = tt.addptr %24, %38 : tensor<32x128x!tt.ptr<f16>, #blocked3>, tensor<32x128xi64, #blocked3>
+    %40 = arith.cmpi sge, %29, %cst_21 : tensor<32x1xi64, #blocked3>
+    %41 = arith.cmpi slt, %29, %cst_20 : tensor<32x1xi64, #blocked3>
+    %42 = arith.andi %40, %41 : tensor<32x1xi1, #blocked3>
+    %43 = tt.broadcast %42 : tensor<32x1xi1, #blocked3> -> tensor<32x128xi1, #blocked3>
+    %44 = tt.load %39, %43, %cst_8 : tensor<32x128x!tt.ptr<f16>, #blocked3>
+    %45 = tt.addptr %arg5, %22 : !tt.ptr<i32>, i32
+    %46 = tt.load %45 : !tt.ptr<i32>
+    %47 = arith.muli %46, %c128_i32 : i32
+    %48 = tt.addptr %arg4, %21 : !tt.ptr<i32>, i32
+    %49 = tt.load %48 : !tt.ptr<i32>
+    %50 = arith.muli %49, %c4_i32 : i32
+    %51 = arith.minsi %50, %c2312_i32 : i32
+    %52 = arith.extsi %47 : i32 to i64
+    %53 = tt.splat %47 : i32 -> tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked}>>
+    %54 = arith.addi %53, %16 : tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked}>>
+    %55 = tt.expand_dims %19 {axis = 1 : i32} : tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked}>> -> tensor<32x1xi32, #blocked>
+    %56 = tt.expand_dims %20 {axis = 1 : i32} : tensor<32xi32, #ttg.slice<{dim = 1, parent = #blocked3}>> -> tensor<32x1xi32, #blocked3>
+    %57 = tt.expand_dims %54 {axis = 0 : i32} : tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked}>> -> tensor<1x32xi32, #blocked>
+    %58 = tt.splat %10 : !tt.ptr<f16> -> tensor<128x32x!tt.ptr<f16>, #blocked2>
+    %59 = tt.expand_dims %35 {axis = 1 : i32} : tensor<128xi64, #ttg.slice<{dim = 1, parent = #blocked2}>> -> tensor<128x1xi64, #blocked2>
+    %60 = tt.broadcast %59 : tensor<128x1xi64, #blocked2> -> tensor<128x32xi64, #blocked2>
+    %61 = tt.fp_to_fp %44 : tensor<32x128xf16, #blocked3> -> tensor<32x128xf32, #blocked3>
+    %62 = ttg.local_alloc %61 : (tensor<32x128xf32, #blocked3>) -> !ttg.memdesc<32x128xf32, #shared, #smem>
+    %63 = arith.remsi %55, %cst_9 : tensor<32x1xi32, #blocked>
+    %64 = tt.splat %arg8 : !tt.ptr<i32> -> tensor<32x1x!tt.ptr<i32>, #blocked>
+    %65 = tt.addptr %64, %63 : tensor<32x1x!tt.ptr<i32>, #blocked>, tensor<32x1xi32, #blocked>
+    %66 = tt.splat %arg9 : !tt.ptr<i64> -> tensor<1x32x!tt.ptr<i64>, #blocked>
+    %67 = tt.splat %arg11 : !tt.ptr<i32> -> tensor<32x1x!tt.ptr<i32>, #blocked>
+    %68 = tt.splat %11 : !tt.ptr<f16> -> tensor<32x128x!tt.ptr<f16>, #blocked3>
+    %69:7 = scf.for %arg14 = %c0_i32 to %51 step %c1_i32 iter_args(%arg15 = %cst_1, %arg16 = %cst, %arg17 = %cst_5, %arg18 = %52, %arg19 = %52, %arg20 = %57, %arg21 = %57) -> (tensor<32x128xf32, #blocked1>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>, i64, i64, tensor<1x32xi32, #blocked>, tensor<1x32xi32, #blocked>)  : i32 {
+      %104 = tt.splat %arg19 : i64 -> tensor<32xi64, #ttg.slice<{dim = 0, parent = #blocked2}>>
+      %105 = arith.addi %104, %27 : tensor<32xi64, #ttg.slice<{dim = 0, parent = #blocked2}>>
+      %106 = tt.expand_dims %105 {axis = 0 : i32} : tensor<32xi64, #ttg.slice<{dim = 0, parent = #blocked2}>> -> tensor<1x32xi64, #blocked2>
+      %107 = arith.muli %106, %cst_19 : tensor<1x32xi64, #blocked2>
+      %108 = tt.broadcast %107 : tensor<1x32xi64, #blocked2> -> tensor<128x32xi64, #blocked2>
+      %109 = arith.addi %60, %108 : tensor<128x32xi64, #blocked2>
+      %110 = tt.addptr %58, %109 : tensor<128x32x!tt.ptr<f16>, #blocked2>, tensor<128x32xi64, #blocked2>
+      %111 = arith.cmpi sge, %106, %cst_25 : tensor<1x32xi64, #blocked2>
+      %112 = arith.cmpi slt, %106, %cst_18 : tensor<1x32xi64, #blocked2>
+      %113 = arith.andi %111, %112 : tensor<1x32xi1, #blocked2>
+      %114 = tt.broadcast %113 : tensor<1x32xi1, #blocked2> -> tensor<128x32xi1, #blocked2>
+      %115 = tt.load %110, %114, %cst_7 : tensor<128x32x!tt.ptr<f16>, #blocked2>
+      %116 = tt.fp_to_fp %115 : tensor<128x32xf16, #blocked2> -> tensor<128x32xf32, #blocked2>
+      %117 = ttg.local_alloc %116 : (tensor<128x32xf32, #blocked2>) -> !ttg.memdesc<128x32xf32, #shared1, #smem>
+      %118 = ttg.local_load %62 : !ttg.memdesc<32x128xf32, #shared, #smem> -> tensor<32x128xf32, #ttg.dot_op<{opIdx = 0, parent = #blocked}>>
+      %119 = ttg.local_load %117 : !ttg.memdesc<128x32xf32, #shared1, #smem> -> tensor<128x32xf32, #ttg.dot_op<{opIdx = 1, parent = #blocked}>>
+      %120 = tt.dot %118, %119, %cst_6 : tensor<32x128xf32, #ttg.dot_op<{opIdx = 0, parent = #blocked}>> * tensor<128x32xf32, #ttg.dot_op<{opIdx = 1, parent = #blocked}>> -> tensor<32x32xf32, #blocked>
+      %121 = arith.mulf %120, %cst_2 : tensor<32x32xf32, #blocked>
+      %122 = arith.remsi %arg21, %cst_23 : tensor<1x32xi32, #blocked>
+      %123 = arith.remsi %arg20, %cst_23 : tensor<1x32xi32, #blocked>
+      %124 = arith.cmpi slt, %arg20, %cst_23 : tensor<1x32xi32, #blocked>
+      %125 = tt.broadcast %124 : tensor<1x32xi1, #blocked> -> tensor<32x32xi1, #blocked>
+      %126 = arith.select %125, %121, %cst_3 : tensor<32x32xi1, #blocked>, tensor<32x32xf32, #blocked>
+      %127 = tt.load %65 : tensor<32x1x!tt.ptr<i32>, #blocked>
+      %128 = arith.cmpi slt, %122, %cst_13 : tensor<1x32xi32, #blocked>
+      %129 = arith.remsi %122, %cst_27 : tensor<1x32xi32, #blocked>
+      %130 = arith.remsi %123, %cst_27 : tensor<1x32xi32, #blocked>
+      %131 = arith.cmpi ne, %129, %cst_13 : tensor<1x32xi32, #blocked>
+      %132 = arith.cmpi ne, %130, %cst_13 : tensor<1x32xi32, #blocked>
+      %133 = arith.divsi %122, %cst_27 : tensor<1x32xi32, #blocked>
+      %134 = arith.subi %133, %cst_14 : tensor<1x32xi32, #blocked>
+      %135 = arith.select %131, %134, %133 : tensor<1x32xi1, #blocked>, tensor<1x32xi32, #blocked>
+      %136 = arith.select %128, %135, %133 : tensor<1x32xi1, #blocked>, tensor<1x32xi32, #blocked>
+      %137 = tt.addptr %66, %136 : tensor<1x32x!tt.ptr<i64>, #blocked>, tensor<1x32xi32, #blocked>
+      %138 = tt.load %137 : tensor<1x32x!tt.ptr<i64>, #blocked>
+      %139 = arith.cmpi sge, %138, %cst_26 : tensor<1x32xi64, #blocked>
+      %140 = arith.muli %138, %cst_24 : tensor<1x32xi64, #blocked>
+      %141 = arith.cmpi slt, %130, %cst_13 : tensor<1x32xi32, #blocked>
+      %142 = arith.andi %132, %141 : tensor<1x32xi1, #blocked>
+      %143 = arith.addi %130, %cst_27 : tensor<1x32xi32, #blocked>
+      %144 = arith.select %142, %143, %130 : tensor<1x32xi1, #blocked>, tensor<1x32xi32, #blocked>
+      %145 = arith.extsi %144 : tensor<1x32xi32, #blocked> to tensor<1x32xi64, #blocked>
+      %146 = arith.addi %140, %145 : tensor<1x32xi64, #blocked>
+      %147 = tt.load %arg10 : !tt.ptr<i32>
+      %148 = arith.extsi %147 : i32 to i64
+      %149 = tt.splat %148 : i64 -> tensor<1x32xi64, #blocked>
+      %150 = arith.cmpi slt, %146, %149 : tensor<1x32xi64, #blocked>
+      %151 = arith.andi %139, %150 : tensor<1x32xi1, #blocked>
+      %152 = arith.cmpi sge, %146, %cst_26 : tensor<1x32xi64, #blocked>
+      %153 = arith.andi %151, %152 : tensor<1x32xi1, #blocked>
+      %154 = tt.addptr %67, %127 : tensor<32x1x!tt.ptr<i32>, #blocked>, tensor<32x1xi32, #blocked>
+      %155 = tt.load %154 : tensor<32x1x!tt.ptr<i32>, #blocked>
+      %156 = arith.subi %63, %155 : tensor<32x1xi32, #blocked>
+      %157 = tt.load %arg12 : !tt.ptr<i32>
+      %158 = tt.splat %157 : i32 -> tensor<32x1xi32, #blocked>
+      %159 = arith.addi %156, %158 : tensor<32x1xi32, #blocked>
+      %160 = arith.extsi %159 : tensor<32x1xi32, #blocked> to tensor<32x1xi64, #blocked>
+      %161 = tt.broadcast %160 : tensor<32x1xi64, #blocked> -> tensor<32x32xi64, #blocked>
+      %162 = tt.broadcast %146 : tensor<1x32xi64, #blocked> -> tensor<32x32xi64, #blocked>
+      %163 = arith.cmpi sge, %161, %162 : tensor<32x32xi64, #blocked>
+      %164 = tt.broadcast %153 : tensor<1x32xi1, #blocked> -> tensor<32x32xi1, #blocked>
+      %165 = arith.select %164, %163, %cst_15 : tensor<32x32xi1, #blocked>, tensor<32x32xi1, #blocked>
+      %166 = arith.select %125, %165, %cst_15 : tensor<32x32xi1, #blocked>, tensor<32x32xi1, #blocked>
+      %167 = arith.select %166, %126, %cst_3 : tensor<32x32xi1, #blocked>, tensor<32x32xf32, #blocked>
+      %168 = arith.mulf %167, %cst_4 : tensor<32x32xf32, #blocked>
+      %169 = "tt.reduce"(%168) <{axis = 1 : i32}> ({
+      ^bb0(%arg22: f32, %arg23: f32):
+        %230 = arith.maxnumf %arg22, %arg23 : f32
+        tt.reduce.return %230 : f32
+      }) : (tensor<32x32xf32, #blocked>) -> tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %170 = arith.maxnumf %arg17, %169 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %171 = arith.cmpf oeq, %170, %cst_5 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %172 = arith.select %171, %cst, %170 : tensor<32xi1, #ttg.slice<{dim = 1, parent = #blocked}>>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %173 = arith.subf %arg17, %172 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %174 = math.exp2 %173 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %175 = tt.expand_dims %172 {axis = 1 : i32} : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>> -> tensor<32x1xf32, #blocked>
+      %176 = tt.broadcast %175 : tensor<32x1xf32, #blocked> -> tensor<32x32xf32, #blocked>
+      %177 = arith.subf %168, %176 : tensor<32x32xf32, #blocked>
+      %178 = math.exp2 %177 : tensor<32x32xf32, #blocked>
+      %179 = arith.mulf %arg16, %174 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %180 = "tt.reduce"(%178) <{axis = 1 : i32}> ({
+      ^bb0(%arg22: f32, %arg23: f32):
+        %230 = arith.addf %arg22, %arg23 : f32
+        tt.reduce.return %230 : f32
+      }) : (tensor<32x32xf32, #blocked>) -> tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %181 = arith.addf %179, %180 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %182 = tt.expand_dims %174 {axis = 1 : i32} : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>> -> tensor<32x1xf32, #blocked>
+      %183 = ttg.convert_layout %182 : tensor<32x1xf32, #blocked> -> tensor<32x1xf32, #blocked1>
+      %184 = tt.broadcast %183 : tensor<32x1xf32, #blocked1> -> tensor<32x128xf32, #blocked1>
+      %185 = arith.mulf %arg15, %184 : tensor<32x128xf32, #blocked1>
+      %186 = tt.splat %arg18 : i64 -> tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>>
+      %187 = arith.addi %186, %26 : tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>>
+      %188 = tt.expand_dims %187 {axis = 1 : i32} : tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>> -> tensor<32x1xi64, #blocked3>
+      %189 = arith.muli %188, %cst_17 : tensor<32x1xi64, #blocked3>
+      %190 = tt.broadcast %189 : tensor<32x1xi64, #blocked3> -> tensor<32x128xi64, #blocked3>
+      %191 = arith.addi %190, %37 : tensor<32x128xi64, #blocked3>
+      %192 = tt.addptr %68, %191 : tensor<32x128x!tt.ptr<f16>, #blocked3>, tensor<32x128xi64, #blocked3>
+      %193 = arith.cmpi sge, %188, %cst_21 : tensor<32x1xi64, #blocked3>
+      %194 = arith.cmpi slt, %188, %cst_16 : tensor<32x1xi64, #blocked3>
+      %195 = arith.andi %193, %194 : tensor<32x1xi1, #blocked3>
+      %196 = tt.broadcast %195 : tensor<32x1xi1, #blocked3> -> tensor<32x128xi1, #blocked3>
+      %197 = tt.load %192, %196, %cst_8 : tensor<32x128x!tt.ptr<f16>, #blocked3>
+      %198 = arith.truncf %178 : tensor<32x32xf32, #blocked> to tensor<32x32xf16, #blocked>
+      %199 = tt.fp_to_fp %198 : tensor<32x32xf16, #blocked> -> tensor<32x32xf32, #blocked>
+      %200 = ttg.local_alloc %199 : (tensor<32x32xf32, #blocked>) -> !ttg.memdesc<32x32xf32, #shared, #smem>
+      %201 = ttg.local_load %200 : !ttg.memdesc<32x32xf32, #shared, #smem> -> tensor<32x32xf32, #ttg.dot_op<{opIdx = 0, parent = #blocked1}>>
+      %202 = tt.fp_to_fp %197 : tensor<32x128xf16, #blocked3> -> tensor<32x128xf32, #blocked3>
+      %203 = ttg.local_alloc %202 : (tensor<32x128xf32, #blocked3>) -> !ttg.memdesc<32x128xf32, #shared, #smem>
+      %204 = ttg.local_load %203 : !ttg.memdesc<32x128xf32, #shared, #smem> -> tensor<32x128xf32, #ttg.dot_op<{opIdx = 1, parent = #blocked1}>>
+      %205 = tt.dot %201, %204, %185 : tensor<32x32xf32, #ttg.dot_op<{opIdx = 0, parent = #blocked1}>> * tensor<32x128xf32, #ttg.dot_op<{opIdx = 1, parent = #blocked1}>> -> tensor<32x128xf32, #blocked1>
+      %206 = arith.divsi %arg14, %c4_i32 : i32
+      %207 = tt.addptr %45, %206 : !tt.ptr<i32>, i32
+      %208 = tt.load %207 evictionPolicy = evict_last : !tt.ptr<i32>
+      %209 = arith.addi %206, %c1_i32 : i32
+      %210 = arith.cmpi slt, %209, %49 : i32
+      %211 = tt.addptr %207, %c1_i32 : !tt.ptr<i32>, i32
+      %212 = tt.load %211, %210 evictionPolicy = evict_last : !tt.ptr<i32>
+      %213 = arith.addi %arg14, %c1_i32 : i32
+      %214 = arith.remsi %213, %c4_i32 : i32
+      %215 = arith.cmpi eq, %214, %c0_i32 : i32
+      %216 = arith.subi %212, %208 : i32
+      %217 = arith.muli %216, %c128_i32 : i32
+      %218 = arith.subi %217, %c96_i32 : i32
+      %219 = arith.extui %215 : i1 to i32
+      %220 = arith.muli %218, %219 : i32
+      %221 = arith.subi %c1_i32, %219 : i32
+      %222 = arith.muli %221, %c32_i32 : i32
+      %223 = arith.addi %220, %222 : i32
+      %224 = arith.extsi %223 : i32 to i64
+      %225 = arith.addi %arg18, %224 : i64
+      %226 = arith.addi %arg19, %224 : i64
+      %227 = tt.splat %223 : i32 -> tensor<1x32xi32, #blocked>
+      %228 = arith.addi %arg20, %227 : tensor<1x32xi32, #blocked>
+      %229 = arith.addi %arg21, %227 : tensor<1x32xi32, #blocked>
+      scf.yield %205, %181, %170, %225, %226, %228, %229 : tensor<32x128xf32, #blocked1>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>, i64, i64, tensor<1x32xi32, #blocked>, tensor<1x32xi32, #blocked>
+    }
+    %70 = tt.addptr %arg7, %22 : !tt.ptr<i32>, i32
+    %71 = tt.load %70 : !tt.ptr<i32>
+    %72 = arith.muli %71, %c128_i32 : i32
+    %73 = tt.addptr %arg6, %21 : !tt.ptr<i32>, i32
+    %74 = tt.load %73 : !tt.ptr<i32>
+    %75 = arith.muli %74, %c4_i32 : i32
+    %76 = arith.minsi %75, %c2312_i32 : i32
+    %77 = arith.extsi %72 : i32 to i64
+    %78 = tt.splat %72 : i32 -> tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked}>>
+    %79 = arith.addi %78, %16 : tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked}>>
+    %80 = tt.expand_dims %79 {axis = 0 : i32} : tensor<32xi32, #ttg.slice<{dim = 0, parent = #blocked}>> -> tensor<1x32xi32, #blocked>
+    %81:6 = scf.for %arg14 = %c0_i32 to %76 step %c1_i32 iter_args(%arg15 = %69#0, %arg16 = %69#1, %arg17 = %69#2, %arg18 = %77, %arg19 = %77, %arg20 = %80) -> (tensor<32x128xf32, #blocked1>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>, i64, i64, tensor<1x32xi32, #blocked>)  : i32 {
+      %104 = tt.splat %arg19 : i64 -> tensor<32xi64, #ttg.slice<{dim = 0, parent = #blocked2}>>
+      %105 = arith.addi %104, %27 : tensor<32xi64, #ttg.slice<{dim = 0, parent = #blocked2}>>
+      %106 = tt.expand_dims %105 {axis = 0 : i32} : tensor<32xi64, #ttg.slice<{dim = 0, parent = #blocked2}>> -> tensor<1x32xi64, #blocked2>
+      %107 = arith.muli %106, %cst_19 : tensor<1x32xi64, #blocked2>
+      %108 = tt.broadcast %107 : tensor<1x32xi64, #blocked2> -> tensor<128x32xi64, #blocked2>
+      %109 = arith.addi %60, %108 : tensor<128x32xi64, #blocked2>
+      %110 = tt.addptr %58, %109 : tensor<128x32x!tt.ptr<f16>, #blocked2>, tensor<128x32xi64, #blocked2>
+      %111 = arith.cmpi sge, %106, %cst_25 : tensor<1x32xi64, #blocked2>
+      %112 = arith.cmpi slt, %106, %cst_18 : tensor<1x32xi64, #blocked2>
+      %113 = arith.andi %111, %112 : tensor<1x32xi1, #blocked2>
+      %114 = tt.broadcast %113 : tensor<1x32xi1, #blocked2> -> tensor<128x32xi1, #blocked2>
+      %115 = tt.load %110, %114, %cst_7 : tensor<128x32x!tt.ptr<f16>, #blocked2>
+      %116 = tt.fp_to_fp %115 : tensor<128x32xf16, #blocked2> -> tensor<128x32xf32, #blocked2>
+      %117 = ttg.local_alloc %116 : (tensor<128x32xf32, #blocked2>) -> !ttg.memdesc<128x32xf32, #shared1, #smem>
+      %118 = ttg.local_load %62 : !ttg.memdesc<32x128xf32, #shared, #smem> -> tensor<32x128xf32, #ttg.dot_op<{opIdx = 0, parent = #blocked}>>
+      %119 = ttg.local_load %117 : !ttg.memdesc<128x32xf32, #shared1, #smem> -> tensor<128x32xf32, #ttg.dot_op<{opIdx = 1, parent = #blocked}>>
+      %120 = tt.dot %118, %119, %cst_6 : tensor<32x128xf32, #ttg.dot_op<{opIdx = 0, parent = #blocked}>> * tensor<128x32xf32, #ttg.dot_op<{opIdx = 1, parent = #blocked}>> -> tensor<32x32xf32, #blocked>
+      %121 = arith.mulf %120, %cst_2 : tensor<32x32xf32, #blocked>
+      %122 = arith.cmpi slt, %arg20, %cst_23 : tensor<1x32xi32, #blocked>
+      %123 = tt.broadcast %122 : tensor<1x32xi1, #blocked> -> tensor<32x32xi1, #blocked>
+      %124 = arith.select %123, %121, %cst_3 : tensor<32x32xi1, #blocked>, tensor<32x32xf32, #blocked>
+      %125 = arith.mulf %124, %cst_4 : tensor<32x32xf32, #blocked>
+      %126 = "tt.reduce"(%125) <{axis = 1 : i32}> ({
+      ^bb0(%arg21: f32, %arg22: f32):
+        %186 = arith.maxnumf %arg21, %arg22 : f32
+        tt.reduce.return %186 : f32
+      }) : (tensor<32x32xf32, #blocked>) -> tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %127 = arith.maxnumf %arg17, %126 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %128 = arith.cmpf oeq, %127, %cst_5 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %129 = arith.select %128, %cst, %127 : tensor<32xi1, #ttg.slice<{dim = 1, parent = #blocked}>>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %130 = arith.subf %arg17, %129 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %131 = math.exp2 %130 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %132 = tt.expand_dims %129 {axis = 1 : i32} : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>> -> tensor<32x1xf32, #blocked>
+      %133 = tt.broadcast %132 : tensor<32x1xf32, #blocked> -> tensor<32x32xf32, #blocked>
+      %134 = arith.subf %125, %133 : tensor<32x32xf32, #blocked>
+      %135 = math.exp2 %134 : tensor<32x32xf32, #blocked>
+      %136 = arith.mulf %arg16, %131 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %137 = "tt.reduce"(%135) <{axis = 1 : i32}> ({
+      ^bb0(%arg21: f32, %arg22: f32):
+        %186 = arith.addf %arg21, %arg22 : f32
+        tt.reduce.return %186 : f32
+      }) : (tensor<32x32xf32, #blocked>) -> tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %138 = arith.addf %136, %137 : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+      %139 = tt.expand_dims %131 {axis = 1 : i32} : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>> -> tensor<32x1xf32, #blocked>
+      %140 = ttg.convert_layout %139 : tensor<32x1xf32, #blocked> -> tensor<32x1xf32, #blocked1>
+      %141 = tt.broadcast %140 : tensor<32x1xf32, #blocked1> -> tensor<32x128xf32, #blocked1>
+      %142 = arith.mulf %arg15, %141 : tensor<32x128xf32, #blocked1>
+      %143 = tt.splat %arg18 : i64 -> tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>>
+      %144 = arith.addi %143, %26 : tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>>
+      %145 = tt.expand_dims %144 {axis = 1 : i32} : tensor<32xi64, #ttg.slice<{dim = 1, parent = #blocked3}>> -> tensor<32x1xi64, #blocked3>
+      %146 = arith.muli %145, %cst_17 : tensor<32x1xi64, #blocked3>
+      %147 = tt.broadcast %146 : tensor<32x1xi64, #blocked3> -> tensor<32x128xi64, #blocked3>
+      %148 = arith.addi %147, %37 : tensor<32x128xi64, #blocked3>
+      %149 = tt.addptr %68, %148 : tensor<32x128x!tt.ptr<f16>, #blocked3>, tensor<32x128xi64, #blocked3>
+      %150 = arith.cmpi sge, %145, %cst_21 : tensor<32x1xi64, #blocked3>
+      %151 = arith.cmpi slt, %145, %cst_16 : tensor<32x1xi64, #blocked3>
+      %152 = arith.andi %150, %151 : tensor<32x1xi1, #blocked3>
+      %153 = tt.broadcast %152 : tensor<32x1xi1, #blocked3> -> tensor<32x128xi1, #blocked3>
+      %154 = tt.load %149, %153, %cst_8 : tensor<32x128x!tt.ptr<f16>, #blocked3>
+      %155 = arith.truncf %135 : tensor<32x32xf32, #blocked> to tensor<32x32xf16, #blocked>
+      %156 = tt.fp_to_fp %155 : tensor<32x32xf16, #blocked> -> tensor<32x32xf32, #blocked>
+      %157 = ttg.local_alloc %156 : (tensor<32x32xf32, #blocked>) -> !ttg.memdesc<32x32xf32, #shared, #smem>
+      %158 = ttg.local_load %157 : !ttg.memdesc<32x32xf32, #shared, #smem> -> tensor<32x32xf32, #ttg.dot_op<{opIdx = 0, parent = #blocked1}>>
+      %159 = tt.fp_to_fp %154 : tensor<32x128xf16, #blocked3> -> tensor<32x128xf32, #blocked3>
+      %160 = ttg.local_alloc %159 : (tensor<32x128xf32, #blocked3>) -> !ttg.memdesc<32x128xf32, #shared, #smem>
+      %161 = ttg.local_load %160 : !ttg.memdesc<32x128xf32, #shared, #smem> -> tensor<32x128xf32, #ttg.dot_op<{opIdx = 1, parent = #blocked1}>>
+      %162 = tt.dot %158, %161, %142 : tensor<32x32xf32, #ttg.dot_op<{opIdx = 0, parent = #blocked1}>> * tensor<32x128xf32, #ttg.dot_op<{opIdx = 1, parent = #blocked1}>> -> tensor<32x128xf32, #blocked1>
+      %163 = arith.divsi %arg14, %c4_i32 : i32
+      %164 = tt.addptr %70, %163 : !tt.ptr<i32>, i32
+      %165 = tt.load %164 evictionPolicy = evict_last : !tt.ptr<i32>
+      %166 = arith.addi %163, %c1_i32 : i32
+      %167 = arith.cmpi slt, %166, %74 : i32
+      %168 = tt.addptr %164, %c1_i32 : !tt.ptr<i32>, i32
+      %169 = tt.load %168, %167 evictionPolicy = evict_last : !tt.ptr<i32>
+      %170 = arith.addi %arg14, %c1_i32 : i32
+      %171 = arith.remsi %170, %c4_i32 : i32
+      %172 = arith.cmpi eq, %171, %c0_i32 : i32
+      %173 = arith.subi %169, %165 : i32
+      %174 = arith.muli %173, %c128_i32 : i32
+      %175 = arith.subi %174, %c96_i32 : i32
+      %176 = arith.extui %172 : i1 to i32
+      %177 = arith.muli %175, %176 : i32
+      %178 = arith.subi %c1_i32, %176 : i32
+      %179 = arith.muli %178, %c32_i32 : i32
+      %180 = arith.addi %177, %179 : i32
+      %181 = arith.extsi %180 : i32 to i64
+      %182 = arith.addi %arg18, %181 : i64
+      %183 = arith.addi %arg19, %181 : i64
+      %184 = tt.splat %180 : i32 -> tensor<1x32xi32, #blocked>
+      %185 = arith.addi %arg20, %184 : tensor<1x32xi32, #blocked>
+      scf.yield %162, %138, %127, %182, %183, %185 : tensor<32x128xf32, #blocked1>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>, i64, i64, tensor<1x32xi32, #blocked>
+    }
+    %82 = arith.cmpf oeq, %81#1, %cst : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+    %83 = arith.select %82, %cst_0, %81#1 : tensor<32xi1, #ttg.slice<{dim = 1, parent = #blocked}>>, tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>>
+    %84 = tt.expand_dims %83 {axis = 1 : i32} : tensor<32xf32, #ttg.slice<{dim = 1, parent = #blocked}>> -> tensor<32x1xf32, #blocked>
+    %85 = ttg.convert_layout %84 : tensor<32x1xf32, #blocked> -> tensor<32x1xf32, #blocked1>
+    %86 = tt.broadcast %85 : tensor<32x1xf32, #blocked1> -> tensor<32x128xf32, #blocked1>
+    %87 = arith.divf %81#0, %86 : tensor<32x128xf32, #blocked1>
+    %88 = tt.expand_dims %32 {axis = 0 : i32} : tensor<128xi32, #ttg.slice<{dim = 0, parent = #blocked3}>> -> tensor<1x128xi32, #blocked3>
+    %89 = arith.cmpi slt, %56, %cst_10 : tensor<32x1xi32, #blocked3>
+    %90 = arith.cmpi slt, %88, %cst_11 : tensor<1x128xi32, #blocked3>
+    %91 = tt.broadcast %89 : tensor<32x1xi1, #blocked3> -> tensor<32x128xi1, #blocked3>
+    %92 = tt.broadcast %90 : tensor<1x128xi1, #blocked3> -> tensor<32x128xi1, #blocked3>
+    %93 = arith.andi %91, %92 : tensor<32x128xi1, #blocked3>
+    %94 = tt.splat %6 : i32 -> tensor<1x128xi32, #blocked3>
+    %95 = arith.addi %88, %94 : tensor<1x128xi32, #blocked3>
+    %96 = arith.muli %56, %cst_12 : tensor<32x1xi32, #blocked3>
+    %97 = tt.broadcast %95 : tensor<1x128xi32, #blocked3> -> tensor<32x128xi32, #blocked3>
+    %98 = tt.broadcast %96 : tensor<32x1xi32, #blocked3> -> tensor<32x128xi32, #blocked3>
+    %99 = arith.addi %97, %98 : tensor<32x128xi32, #blocked3>
+    %100 = tt.splat %arg13 : !tt.ptr<f16> -> tensor<32x128x!tt.ptr<f16>, #blocked3>
+    %101 = tt.addptr %100, %99 : tensor<32x128x!tt.ptr<f16>, #blocked3>, tensor<32x128xi32, #blocked3>
+    %102 = arith.truncf %87 : tensor<32x128xf32, #blocked1> to tensor<32x128xf16, #blocked1>
+    %103 = ttg.convert_layout %102 : tensor<32x128xf16, #blocked1> -> tensor<32x128xf16, #blocked3>
+    tt.store %101, %103, %93 : tensor<32x128x!tt.ptr<f16>, #blocked3>
+    tt.return
+  }
+}
+
+{-#
+  external_resources: {
+    mlir_reproducer: {
+      pipeline: "builtin.module(triton-nvidia-mma-lowering, tritongpu-combine-tensor-select-and-if, tritongpu-allocate-warp-groups, convert-scf-to-cf, allocate-shared-memory, triton-tensor-memory-allocation, tritongpu-global-scratch-memory-allocation, convert-triton-gpu-to-llvm{compute-capability=75 ptx-version=78}, canonicalize{  max-iterations=10 max-num-rewrites=-1 region-simplify=normal test-convergence=false top-down=true}, cse, convert-nv-gpu-to-llvm, convert-warp-specialize-to-llvm, canonicalize{  max-iterations=10 max-num-rewrites=-1 region-simplify=normal test-convergence=false top-down=true}, cse, symbol-dce, enable-line-info)",
+      disable_threading: false,
+      verify_each: true
+    }
+  }
+#-}
+/tmp/torchinductor_root/pl/cplz4nlou3tt6y5xycq7lmzyvhf4oi3uqk3sm52fybwcsxvsbjzw.py:16:0: error: Failures have been detected while processing an MLIR pass pipeline
+/tmp/torchinductor_root/pl/cplz4nlou3tt6y5xycq7lmzyvhf4oi3uqk3sm52fybwcsxvsbjzw.py:16:0: note: Pipeline failed while executing [`ConvertTritonGPUToLLVM` on 'builtin.module' operation]: reproducer generated at `std::errs, please share the reproducer above with Triton project.`
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] Triton compilation failed: triton_tem_fused_0
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] def triton_tem_fused_0(arg_Q, arg_K, arg_V, arg_LSE, arg_KV_NUM_BLKS, arg_KV_IDX, arg_FULL_KV_NUM_BLKS, arg_FULL_KV_IDX, in_ptr8, in_ptr9, in_ptr10, in_ptr11, in_ptr12, out_ptr0):
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     FORCE_USE_FLEX_ATTENTION : tl.constexpr = True
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     BLOCK_M : tl.constexpr = 32
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     BLOCK_N : tl.constexpr = 32
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     PRESCALE_QK : tl.constexpr = False
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     ROWS_GUARANTEED_SAFE : tl.constexpr = False
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     BLOCKS_ARE_CONTIGUOUS : tl.constexpr = False
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     WRITE_DQ : tl.constexpr = True
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     OUTPUT_LOGSUMEXP : tl.constexpr = False
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     FLOAT32_PRECISION : tl.constexpr = 'ieee'
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     IS_DIVISIBLE : tl.constexpr = False
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     SM_SCALE : tl.constexpr = 0.08838834764831845
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     GQA_SHARED_HEADS : tl.constexpr = 2
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     HAS_FULL_BLOCKS : tl.constexpr = True
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     QK_HEAD_DIM : tl.constexpr = 128
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     QK_HEAD_DIM_ROUNDED : tl.constexpr = 128
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     V_HEAD_DIM : tl.constexpr = 128
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     V_HEAD_DIM_ROUNDED : tl.constexpr = 128
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     SAFE_HEAD_DIM : tl.constexpr = True
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     SPARSE_Q_BLOCK_SIZE : tl.constexpr = 128
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     SPARSE_KV_BLOCK_SIZE : tl.constexpr = 128
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     ALLOW_TF32 : tl.constexpr = False
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     Q = arg_Q
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     K = arg_K
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     V = arg_V
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     LSE = arg_LSE
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     KV_NUM_BLKS = arg_KV_NUM_BLKS
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     KV_IDX = arg_KV_IDX
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     FULL_KV_NUM_BLKS = arg_FULL_KV_NUM_BLKS
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     FULL_KV_IDX = arg_FULL_KV_IDX
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # Sub notation for this kernel:
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     #
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # Q: Query, K: Key, V: Value
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # M: Number of queries, N: Number of keys/values, D: Model dimension
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # QK_HEAD_DIM: The dimension of the query and key embeddings
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # V_HEAD_DIM: The dimension of the value embeddings
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # z: Batch size, h: Number of heads, m: Number of queries per head, k: Number of keys per head
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # GQA_SHARED_HEADS: number of query heads sharing one kv head in GQA setups.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     #
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # The following FULL_* and PARTIAL_* is defined in the block sparse mask grid, rather than the thread block grid.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # KV_NUM_BLKS: The number of KV blocks (that may or may not require masking) for each query.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # KV_IDX: The indices of KV blocks (that may or may not require masking) for each query.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # FULL_KV_NUM_BLKS: The number of fully unmasked KV blocks (so we don't need masking) for each query.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # FULL_KV_IDX: The indices of fully unmasked KV blocks (so we don't need masking) for each query.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     #
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # OUTPUT_LOGSUMEXP: We only need to store the logsumexp if we require grad
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     #
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # (Modifiable) Performance tuning options
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # BLOCK_M: The thread block size across the seqlen dim of Q.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # BLOCK_N: Iterate over BLOCK_N across the seqlen dim of K/V in each thread block.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # The below are kernel options that can be applied for certain score_mods,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # or involve a numerics vs. perf tradeoff
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # PRESCALE_QK: Whether to pre-scale QK by 1/sqrt(d) and change of base. Has
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # about 20% more numerical error, but slightly faster.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # ROWS_GUARANTEED_SAFE: Is it guaranteed that at least one value in each row
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # is not masked out? If so, we can skip an extra safety check
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # BLOCKS_ARE_CONTIGUOUS: Is it guaranteed that all blocks in the mask are
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # contiguous? If so, we don't need to do an indirect jump for every block
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     tl.static_assert(SPARSE_Q_BLOCK_SIZE >= BLOCK_M and SPARSE_Q_BLOCK_SIZE % BLOCK_M == 0)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     tl.static_assert(SPARSE_KV_BLOCK_SIZE >= BLOCK_N and SPARSE_KV_BLOCK_SIZE % BLOCK_N == 0)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # Define strides of inputs
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     stride_qz, stride_qh, stride_qm, stride_qk = 75776, 128, 2048, 1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     stride_kz, stride_kh, stride_kn, stride_kk = 75759616, 128, 1024, 1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     stride_vz, stride_vh, stride_vn, stride_vk = 75759616, 128, 1024, 1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     ZQ = 1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     HQ = 16
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     Q_LEN = 37
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     ZKV = 1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     KV_LEN = 73984
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     MATMUL_PRECISION = Q.dtype.element_ty
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     q_start = tl.program_id(0)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     off_zq = tl.program_id(1) // HQ
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     off_hq = tl.program_id(1) % HQ
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # We support two cases for batch dimension. a) (ZKV == ZQ) where off_zkv = off_zq.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # b) (ZKV == 1 and ZQ > 1) where KV is broadcasted along the batch dimension and off_zkv=0.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     off_zkv = off_zq % ZKV
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     off_hkv = off_hq // GQA_SHARED_HEADS
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     off_g = off_hq % GQA_SHARED_HEADS
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     q_offset = off_zq * stride_qz + off_hq * stride_qh
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     k_offset = off_zkv * stride_kz + off_hkv * stride_kh
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     v_offset = off_zkv * stride_vz + off_hkv * stride_vh
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     Q = Q + q_offset
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     K = K + k_offset
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     V = V + v_offset
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     SPARSE_Z = 1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     SPARSE_HQ = 1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     sparse_idx_z = off_zq % SPARSE_Z
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     sparse_idx_hq = off_hq % SPARSE_HQ
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     SPARSE_Q_MULTIPLE: tl.constexpr = (SPARSE_Q_BLOCK_SIZE // BLOCK_M)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     SPARSE_KV_MULTIPLE: tl.constexpr = (SPARSE_KV_BLOCK_SIZE // BLOCK_N)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     stride_kv_num_blks_h = 1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     stride_kv_idx_h = 578
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     stride_kv_idx_m = 578
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # initialize pointer to m and l
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     m_i = tl.zeros([BLOCK_M], dtype=tl.float32) - float("inf")
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     l_i = tl.zeros([BLOCK_M], dtype=tl.float32)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     acc = tl.zeros([BLOCK_M, V_HEAD_DIM_ROUNDED], dtype=tl.float32)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     offs_m = q_start * BLOCK_M + tl.arange(0, BLOCK_M)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # KV_IDX and KV_NUM_BLKS are always contiguous.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     sparse_hz_offset = sparse_idx_z * SPARSE_HQ + sparse_idx_hq
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     sparse_kv_num_blks_offset = sparse_hz_offset * stride_kv_num_blks_h + q_start // SPARSE_Q_MULTIPLE
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     sparse_kv_idx_offset = sparse_hz_offset * stride_kv_idx_h + (q_start // SPARSE_Q_MULTIPLE) * stride_kv_idx_m  # noqa: B950
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     Q_block_ptr = tl.make_block_ptr(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         base=Q,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         shape=(Q_LEN, QK_HEAD_DIM),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         strides=(stride_qm, stride_qk),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         offsets=(q_start * BLOCK_M, 0),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         block_shape=(BLOCK_M, QK_HEAD_DIM_ROUNDED),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         order=(1, 0)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     )
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     q = load_checked_block(Q_block_ptr, IS_DIVISIBLE, SAFE_HEAD_DIM)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # ~~~~~~~~~~~~~~ normal blocks ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # We don't know anything "special" about these blocks, so we need to apply
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # both score_mod and mask_mod to it
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     kv_indices = KV_IDX + sparse_kv_idx_offset
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     kv_start = tl.load(kv_indices) * SPARSE_KV_BLOCK_SIZE # first kv block we're loading
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     kv_num_blocks = tl.load(KV_NUM_BLKS + sparse_kv_num_blks_offset)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     block_n_end = tl.minimum(kv_num_blocks * SPARSE_KV_MULTIPLE, tl.maximum(tl.cdiv(KV_LEN, BLOCK_N), 1))
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     K_block_ptr = tl.make_block_ptr(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         base=K,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         shape=(QK_HEAD_DIM, KV_LEN),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         strides=(stride_kk, stride_kn),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         offsets=(0, kv_start),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         block_shape=(QK_HEAD_DIM_ROUNDED, BLOCK_N),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         order=(0, 1)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     )
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     V_block_ptr = tl.make_block_ptr(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         base=V,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         shape=(KV_LEN, V_HEAD_DIM),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         strides=(stride_vn, stride_vk),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         offsets=(kv_start, 0),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         block_shape=(BLOCK_N, V_HEAD_DIM_ROUNDED),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         order=(1, 0)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     )
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     offs_n = kv_start + tl.arange(0, BLOCK_N)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     acc, l_i, m_i = forward_inner(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         arg_Q, arg_K, arg_V, arg_LSE, arg_KV_NUM_BLKS, arg_KV_IDX, arg_FULL_KV_NUM_BLKS, arg_FULL_KV_IDX, in_ptr8, in_ptr9, in_ptr10, in_ptr11, in_ptr12, out_ptr0,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         q, K_block_ptr, V_block_ptr, Q_LEN, KV_LEN,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         acc, l_i, m_i,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         off_zq, off_hq, offs_m[:, None], offs_n[None, :],
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         kv_indices, kv_num_blocks,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         0, block_n_end,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         MATMUL_PRECISION,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         IS_FULL_BLOCKS=False,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     )
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # ~~~~~~~~~~~~~~ "full" blocks ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # We know these blocks are guaranteed to be "full", so we don't need to
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # apply mask_mod to them - only score_mod
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     if HAS_FULL_BLOCKS:
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         # FULL_KV_IDX and FULL_KV_NUM_BLKS are always contiguous.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         kv_indices = FULL_KV_IDX + sparse_kv_idx_offset
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         kv_start = tl.load(kv_indices) * SPARSE_KV_BLOCK_SIZE # first kv block we're loading
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         kv_num_blocks = tl.load(FULL_KV_NUM_BLKS + sparse_kv_num_blks_offset)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         block_n_end = tl.minimum(kv_num_blocks * SPARSE_KV_MULTIPLE, tl.maximum(tl.cdiv(KV_LEN, BLOCK_N), 1))
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         K_block_ptr = tl.make_block_ptr(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             base=K,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             shape=(QK_HEAD_DIM, KV_LEN),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             strides=(stride_kk, stride_kn),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             offsets=(0, kv_start),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             block_shape=(QK_HEAD_DIM_ROUNDED, BLOCK_N),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             order=(0, 1)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         )
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         V_block_ptr = tl.make_block_ptr(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             base=V,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             shape=(KV_LEN, V_HEAD_DIM),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             strides=(stride_vn, stride_vk),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             offsets=(kv_start, 0),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             block_shape=(BLOCK_N, V_HEAD_DIM_ROUNDED),
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             order=(1, 0)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         )
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         offs_n = kv_start + tl.arange(0, BLOCK_N)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         acc, l_i, m_i = forward_inner(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             arg_Q, arg_K, arg_V, arg_LSE, arg_KV_NUM_BLKS, arg_KV_IDX, arg_FULL_KV_NUM_BLKS, arg_FULL_KV_IDX, in_ptr8, in_ptr9, in_ptr10, in_ptr11, in_ptr12, out_ptr0,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             q, K_block_ptr, V_block_ptr, Q_LEN, KV_LEN,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             acc, l_i, m_i,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             off_zq, off_hq, offs_m[:, None], offs_n[None, :],
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             kv_indices, kv_num_blocks,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             0, block_n_end,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             MATMUL_PRECISION,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             IS_FULL_BLOCKS=True,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         )
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # [Note] Handle fully masked out rows:
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # Li will be the sum(e^(-inf)) == 0.0 for masked out rows, mi will be -inf.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     # We set Li to 1.0 which will result in lse/out = 0.0 | after the log(li) + mi(0.0) step
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     l_i = tl.where(l_i == 0.0, 1, l_i)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     acc = acc / l_i[:, None]
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     idx_zq = tl.program_id(1) // HQ
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     idx_hq = tl.program_id(1) % HQ
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     idx_m = offs_m[:, None]
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     idx_d = tl.arange(0, V_HEAD_DIM_ROUNDED)[None, :]
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     mask = (idx_m < Q_LEN) & (idx_d < V_HEAD_DIM)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     xindex = idx_d + 128*idx_m + 4736*idx_hq + 75776*idx_zq
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     tl.store(out_ptr0 + (tl.broadcast_to(idx_d + 128*idx_hq + 2048*idx_m, acc.shape)), acc, mask)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     if OUTPUT_LOGSUMEXP:
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         off_hz = tl.program_id(1)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         l_ptrs = LSE + off_hz * Q_LEN + offs_m
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         lse = m_i + tl.math.log2(l_i)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         if IS_DIVISIBLE:
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             tl.store(l_ptrs, lse)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]         else:
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]             tl.store(l_ptrs, lse, mask=offs_m < Q_LEN)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] metadata: {'signature': {'arg_Q': '*fp16', 'arg_K': '*fp16', 'arg_V': '*fp16', 'arg_LSE': '*fp32', 'arg_KV_NUM_BLKS': '*i32', 'arg_KV_IDX': '*i32', 'arg_FULL_KV_NUM_BLKS': '*i32', 'arg_FULL_KV_IDX': '*i32', 'in_ptr8': '*i32', 'in_ptr9': '*i64', 'in_ptr10': '*i32', 'in_ptr11': '*i32', 'in_ptr12': '*i32', 'out_ptr0': '*fp16'}, 'device': 0, 'constants': {}, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]], (6,): [['tt.divisibility', 16]], (7,): [['tt.divisibility', 16]], (8,): [['tt.divisibility', 16]], (9,): [['tt.divisibility', 16]], (10,): [['tt.divisibility', 16]], (11,): [['tt.divisibility', 16]], (12,): [['tt.divisibility', 16]], (13,): [['tt.divisibility', 16]]}], 'device_type': 'cuda', 'num_warps': 4, 'num_stages': 3, 'debug': True, 'cc': 75}
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] Traceback (most recent call last):
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/triton_heuristics.py", line 537, in _precompile_config
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     binary = triton.compile(*compile_args, **compile_kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/compiler/compiler.py", line 284, in compile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     next_module = compile_ir(module, metadata)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/backends/nvidia/compiler.py", line 450, in <lambda>
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     stages["llir"] = lambda src, metadata: self.make_llir(src, metadata, options, capability)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/backends/nvidia/compiler.py", line 341, in make_llir
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0]     pm.run(mod)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m [rank0]:E0731 16:03:52.115000 116603 site-packages/torch/_inductor/runtime/triton_heuristics.py:539] [1/0] RuntimeError: PassManager::run failed
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [dump_input.py:69] Dumping input data for V1 LLM engine (v0.11.0+torch271) with config: model='/root/Qwen3-VL-Embedding-2B', speculative_config=None, tokenizer='/root/Qwen3-VL-Embedding-2B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.float16, max_seq_len=2048, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=True, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser=''), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None), seed=0, served_model_name=/root/Qwen3-VL-Embedding-2B, enable_prefix_caching=True, chunked_prefill_enabled=True, pooler_config=PoolerConfig(pooling_type='LAST', normalize=True, dimensions=None, enable_chunked_processing=None, max_embed_len=None, activation=None, logit_bias=None, softmax=None, step_tag_id=None, returned_token_ids=None), compilation_config={"level":0,"debug_dump_path":"","cache_dir":"","backend":"","custom_ops":[],"splitting_ops":null,"use_inductor":true,"compile_sizes":[],"inductor_compile_config":{"enable_auto_functionalized_v2":false},"inductor_passes":{},"cudagraph_mode":0,"use_cudagraph":true,"cudagraph_num_of_warmups":0,"cudagraph_capture_sizes":[],"cudagraph_copy_inputs":false,"full_cuda_graph":false,"use_inductor_graph_partition":false,"pass_config":{},"max_capture_size":0,"local_cache_dir":null}, 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [dump_input.py:76] Dumping scheduler output for model execution: SchedulerOutput(scheduled_new_reqs=[NewRequestData(req_id=0,prompt_token_ids_len=37,mm_features=[],sampling_params=None,block_ids=([1, 2, 3],),num_computed_tokens=0,lora_request=None,prompt_embeds_shape=None)], scheduled_cached_reqs=CachedRequestData(req_ids=[], resumed_from_preemption=[], new_token_ids=[], new_block_ids=[], num_computed_tokens=[]), num_scheduled_tokens={0: 37}, total_num_scheduled_tokens=37, scheduled_spec_decode_tokens={}, scheduled_encoder_inputs={}, num_common_prefix_blocks=[3], finished_req_ids=[], free_encoder_mm_hashes=[], structured_output_request_ids={}, grammar_bitmask=null, kv_connector_metadata=null)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710] EngineCore encountered a fatal error.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710] Traceback (most recent call last):
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 701, in run_engine_core
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     engine_core.run_busy_loop()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 728, in run_busy_loop
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     self._process_engine_step()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 754, in _process_engine_step
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     outputs, model_executed = self.step_fn()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 284, in step
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     model_output = self.execute_model_with_error_logging(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 270, in execute_model_with_error_logging
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     raise err
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 261, in execute_model_with_error_logging
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return model_fn(scheduler_output)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/executor/abstract.py", line 103, in execute_model
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     output = self.collective_rpc("execute_model",
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/executor/uniproc_executor.py", line 83, in collective_rpc
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return [run_method(self.driver_worker, method, args, kwargs)]
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/utils/__init__.py", line 3122, in run_method
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return func(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return func(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/worker/gpu_worker.py", line 447, in execute_model
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     output = self.model_runner.execute_model(scheduler_output,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return func(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/worker/gpu_model_runner.py", line 2298, in execute_model
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     model_output = self.model(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return self._call_impl(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return forward_call(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/model_executor/models/qwen3_vl.py", line 1576, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     hidden_states = self.language_model.model(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/compilation/decorators.py", line 225, in __call__
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return self.forward(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/model_executor/models/qwen3_vl.py", line 1033, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     hidden_states, residual = layer(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return self._call_impl(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return forward_call(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/model_executor/models/qwen3.py", line 229, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     hidden_states = self.self_attn(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return self._call_impl(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return forward_call(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/model_executor/models/qwen3.py", line 156, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     attn_output = self.attn(q, k, v)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return self._call_impl(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return forward_call(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/attention/layer.py", line 331, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     torch.ops.vllm.unified_attention_with_output(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_ops.py", line 1158, in __call__
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return self._op(*args, **(kwargs or {}))
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/attention/layer.py", line 614, in unified_attention_with_output
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     self.impl.forward(self,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/attention/backends/flex_attention.py", line 821, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     out = flex_attention_compiled(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 663, in _fn
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     raise e.remove_dynamo_frames() from None  # see TORCHDYNAMO_VERBOSE=1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 760, in _compile_fx_inner
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     raise InductorError(e, currentframe()).with_traceback(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 745, in _compile_fx_inner
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     mb_compiled_graph = fx_codegen_and_compile(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 1295, in fx_codegen_and_compile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return scheme.codegen_and_compile(gm, example_inputs, inputs_to_check, graph_kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 1197, in codegen_and_compile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     compiled_fn = graph.compile_to_module().call
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/graph.py", line 2083, in compile_to_module
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     return self._compile_to_module()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/graph.py", line 2130, in _compile_to_module
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     mod = PyCodeCache.load_by_key_path(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/codecache.py", line 2747, in load_by_key_path
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     mod = _reload_python_module(key, path)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/compile_tasks.py", line 36, in _reload_python_module
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     exec(code, mod.__dict__, mod.__dict__)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/tmp/torchinductor_root/ra/crakr3ae4e6hs7qbceqfsnha5746av7ozxwdnzivukelxdrfmmll.py", line 42, in <module>
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     triton_tem_fused_0 = async_compile.triton('triton_tem_fused_0', '''
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/async_compile.py", line 346, in triton
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     kernel.precompile(warm_cache_only=False)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/triton_heuristics.py", line 276, in precompile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     self._precompile_worker()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/triton_heuristics.py", line 296, in _precompile_worker
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     compile_results.append(self._precompile_config(c))
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/triton_heuristics.py", line 537, in _precompile_config
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     binary = triton.compile(*compile_args, **compile_kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/compiler/compiler.py", line 284, in compile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     next_module = compile_ir(module, metadata)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/backends/nvidia/compiler.py", line 450, in <lambda>
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     stages["llir"] = lambda src, metadata: self.make_llir(src, metadata, options, capability)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/backends/nvidia/compiler.py", line 341, in make_llir
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710]     pm.run(mod)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710] torch._inductor.exc.InductorError: RuntimeError: PassManager::run failed
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710] Set TORCHDYNAMO_VERBOSE=1 for the internal stack trace (please do this especially if you're reporting a bug to PyTorch). For even more developer context, set TORCH_LOGS="+dynamo"
+[1;36m(EngineCore_DP0 pid=116603)[0;0m ERROR 07-31 16:03:52 [core.py:710] 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m Process EngineCore_DP0:
+[1;36m(EngineCore_DP0 pid=116603)[0;0m Traceback (most recent call last):
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/multiprocessing/process.py", line 314, in _bootstrap
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     self.run()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/multiprocessing/process.py", line 108, in run
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     self._target(*self._args, **self._kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 712, in run_engine_core
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     raise e
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 701, in run_engine_core
+Traceback (most recent call last):
+  File "/root/vllm-qwen3vl-cu118-t4/verify_qwen3vl_embedding.py", line 126, in <module>
+    main()
+  File "/root/vllm-qwen3vl-cu118-t4/verify_qwen3vl_embedding.py", line 111, in main
+    embeddings = check_embeddings(llm.embed(requests, use_tqdm=False), len(requests))
+  File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/entrypoints/llm.py", line 1069, in embed
+    items = self.encode(
+  File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/entrypoints/llm.py", line 1011, in encode
+    outputs = self._run_engine(use_tqdm=use_tqdm)
+  File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/entrypoints/llm.py", line 1600, in _run_engine
+    step_outputs = self.llm_engine.step()
+  File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/llm_engine.py", line 265, in step
+    outputs = self.engine_core.get_output()
+  File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core_client.py", line 670, in get_output
+    raise self._format_exception(outputs) from None
+vllm.v1.engine.exceptions.EngineDeadError: EngineCore encountered an issue. See stack trace (above) for the root cause.
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     engine_core.run_busy_loop()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 728, in run_busy_loop
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     self._process_engine_step()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 754, in _process_engine_step
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     outputs, model_executed = self.step_fn()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 284, in step
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     model_output = self.execute_model_with_error_logging(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 270, in execute_model_with_error_logging
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     raise err
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/engine/core.py", line 261, in execute_model_with_error_logging
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return model_fn(scheduler_output)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/executor/abstract.py", line 103, in execute_model
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     output = self.collective_rpc("execute_model",
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/executor/uniproc_executor.py", line 83, in collective_rpc
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return [run_method(self.driver_worker, method, args, kwargs)]
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/utils/__init__.py", line 3122, in run_method
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return func(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return func(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/worker/gpu_worker.py", line 447, in execute_model
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     output = self.model_runner.execute_model(scheduler_output,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return func(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/worker/gpu_model_runner.py", line 2298, in execute_model
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     model_output = self.model(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return self._call_impl(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return forward_call(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/model_executor/models/qwen3_vl.py", line 1576, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     hidden_states = self.language_model.model(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/compilation/decorators.py", line 225, in __call__
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return self.forward(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/model_executor/models/qwen3_vl.py", line 1033, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     hidden_states, residual = layer(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return self._call_impl(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return forward_call(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/model_executor/models/qwen3.py", line 229, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     hidden_states = self.self_attn(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return self._call_impl(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return forward_call(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/model_executor/models/qwen3.py", line 156, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     attn_output = self.attn(q, k, v)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return self._call_impl(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return forward_call(*args, **kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/attention/layer.py", line 331, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     torch.ops.vllm.unified_attention_with_output(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_ops.py", line 1158, in __call__
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return self._op(*args, **(kwargs or {}))
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/attention/layer.py", line 614, in unified_attention_with_output
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     self.impl.forward(self,
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/vllm/v1/attention/backends/flex_attention.py", line 821, in forward
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     out = flex_attention_compiled(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 663, in _fn
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     raise e.remove_dynamo_frames() from None  # see TORCHDYNAMO_VERBOSE=1
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 760, in _compile_fx_inner
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     raise InductorError(e, currentframe()).with_traceback(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 745, in _compile_fx_inner
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     mb_compiled_graph = fx_codegen_and_compile(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 1295, in fx_codegen_and_compile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return scheme.codegen_and_compile(gm, example_inputs, inputs_to_check, graph_kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 1197, in codegen_and_compile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     compiled_fn = graph.compile_to_module().call
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/graph.py", line 2083, in compile_to_module
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     return self._compile_to_module()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/graph.py", line 2130, in _compile_to_module
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     mod = PyCodeCache.load_by_key_path(
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/codecache.py", line 2747, in load_by_key_path
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     mod = _reload_python_module(key, path)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/compile_tasks.py", line 36, in _reload_python_module
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     exec(code, mod.__dict__, mod.__dict__)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/tmp/torchinductor_root/ra/crakr3ae4e6hs7qbceqfsnha5746av7ozxwdnzivukelxdrfmmll.py", line 42, in <module>
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     triton_tem_fused_0 = async_compile.triton('triton_tem_fused_0', '''
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/async_compile.py", line 346, in triton
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     kernel.precompile(warm_cache_only=False)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/triton_heuristics.py", line 276, in precompile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     self._precompile_worker()
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/triton_heuristics.py", line 296, in _precompile_worker
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     compile_results.append(self._precompile_config(c))
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/torch/_inductor/runtime/triton_heuristics.py", line 537, in _precompile_config
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     binary = triton.compile(*compile_args, **compile_kwargs)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/compiler/compiler.py", line 284, in compile
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     next_module = compile_ir(module, metadata)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/backends/nvidia/compiler.py", line 450, in <lambda>
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     stages["llir"] = lambda src, metadata: self.make_llir(src, metadata, options, capability)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m   File "/root/miniconda3/envs/vllm-t4-cu118-torch271/lib/python3.10/site-packages/triton/backends/nvidia/compiler.py", line 341, in make_llir
+[1;36m(EngineCore_DP0 pid=116603)[0;0m     pm.run(mod)
+[1;36m(EngineCore_DP0 pid=116603)[0;0m torch._inductor.exc.InductorError: RuntimeError: PassManager::run failed
+[1;36m(EngineCore_DP0 pid=116603)[0;0m 
+[1;36m(EngineCore_DP0 pid=116603)[0;0m Set TORCHDYNAMO_VERBOSE=1 for the internal stack trace (please do this especially if you're reporting a bug to PyTorch). For even more developer context, set TORCH_LOGS="+dynamo"
+[1;36m(EngineCore_DP0 pid=116603)[0;0m 
