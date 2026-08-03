@@ -5,6 +5,7 @@
 *.tar.gz
 *.part-*
 /SHA256SUMS
+/accuracy_runs/
 
 __pycache__/
 *.pyc

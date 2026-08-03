@@ -1,6 +1,6 @@
 # Qwen3-VL Embedding：vLLM 0.11.0 / T4 / CUDA 11.8 / glibc 2.28 发布包
 
-这是面向 `x86_64 + CPython 3.10 + glibc >= 2.28 + NVIDIA T4 (SM75)` 的定制构建，包含 PyTorch 2.7.1+cu118、XFormers 0.0.31、裁剪后的 vLLM 0.11.0 wheel、Qwen3-VL embedding/pooling 回移、离线依赖、源码补丁、安装脚本和验证脚本。
+这是面向 `x86_64 + CPython 3.10 + glibc >= 2.28 + NVIDIA T4 (SM75)` 的定制构建，包含 PyTorch 2.7.1+cu118、XFormers 0.0.31、裁剪后的 vLLM 0.11.0 wheel、Qwen3-VL 文本/视觉 embedding/pooling 回移、离线依赖、源码补丁、安装脚本和验证脚本。
 
 该构建只保证 FP16、`--kv-cache-dtype auto` 和 XFormers attention；不支持 FP8/DeepGEMM、DeepSeek FP8 MLA、FA3、Ray CGraph/Pipeline Parallel，以及编译时跳过的 Hopper/Blackwell 等高架构内核。它不是通用 CUDA wheel。
 
@@ -23,7 +23,7 @@ python verify_qwen3vl_embedding.py \
   --model /root/Qwen3-VL-Embedding-2B
 ```
 
-如需同时验证视觉输入，追加 `--image /path/to/test.jpg`。验证脚本要求输出维度为 2048、L2 norm 约为 1，并分别覆盖纯文本和可选图片 embedding。
+如需同时验证视觉输入，追加 `--image /path/to/test.jpg`。验证脚本要求输出维度为 2048、L2 norm 约为 1，并分别覆盖纯文本和可选图片 embedding。服务默认允许每个请求携带 1 张图片，视频仍关闭。
 
 ## 启动 Embedding 后端
 
@@ -62,7 +62,7 @@ vllm serve /root/Qwen3-VL-Embedding-2B \
   --max-model-len 2048 \
   --max-num-seqs 1 \
   --tensor-parallel-size 1 \
-  --limit-mm-per-prompt '{"image":0,"video":0}' \
+  --limit-mm-per-prompt '{"image":1,"video":0}' \
   --trust-remote-code \
   2>&1 | tee vllm_server.log
 ```
@@ -170,8 +170,114 @@ PY
 
 真实目标机实测得到 `dimension: 2048`、`norm: 1.0000000199780135`、
 `prompt_tokens: 35` 并输出 `PASS`。Embedding 不生成文本，
-`completion_tokens: 0` 属正常结果。当前服务命令是文本模式；验证图片前需将
-`--limit-mm-per-prompt` 改为 `{"image":1,"video":0}` 并重启服务。
+`completion_tokens: 0` 属正常结果。当前服务默认开启视觉分支，每个请求最多
+1 张图片；没有图片的请求仍只执行文本路径。
+
+发送图片时使用 chat embedding 的 `image_url` 内容块。下面示例将本地图片编码
+成 data URI，避免服务进程访问不到客户端文件路径：
+
+```bash
+IMAGE=/path/to/test.jpg
+python - "$IMAGE" <<'PY' > visual_request.json
+import base64
+import json
+import mimetypes
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+uri = f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
+print(json.dumps({
+    "model": "Qwen3-VL-Embedding-2B",
+    "messages": [
+        {"role": "system", "content": [{"type": "text", "text":
+          "Retrieve images or text relevant to the user's query."}]},
+        {"role": "user", "content": [
+            {"type": "image_url", "image_url": {"url": uri}},
+            {"type": "text", "text": "Describe this image for retrieval."},
+        ]},
+    ],
+    "add_generation_prompt": True,
+    "encoding_format": "float",
+    "normalize": True,
+}))
+PY
+
+curl -s http://127.0.0.1:8000/v1/embeddings \
+  -H 'Content-Type: application/json' \
+  --data-binary @visual_request.json -o visual_response.json
+```
+
+## 与 Transformers 的精度对比
+
+不要只比较一两个相似度分数；应对完全相同的输入保存两套原始 2048 维向量，
+同时检查逐样本余弦/MAE/L2、全量 pairwise similarity matrix 误差和 query-to-document
+Top-1 一致率。`compare_vllm_transformers.py` 已固定两边均为 FP16、相同 instruction
+与 chat template、LAST pooling 和 L2 normalize，并通过图片 SHA256 指纹防止两阶段
+误用不同图片。
+
+T4 只有 16 GiB，建议先停止服务，生成 Transformers 基准；再启动 vLLM 视觉服务
+生成候选向量并比较：
+
+```bash
+conda activate vllm-t4-cu118-torch271
+cd /root/vllm-qwen3vl-cu118-t4
+export MODEL=/root/Qwen3-VL-Embedding-2B
+export IMAGE=/root/test.jpg
+export RUN_DIR="$PWD/accuracy_runs/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$RUN_DIR"
+set -o pipefail
+echo "accuracy outputs: $RUN_DIR"
+
+# 1. 释放 T4 显存；如 PID 文件不存在，可用 ss -lntp 检查实际监听进程。
+PID="$(ss -H -lntp 'sport = :8000' 2>/dev/null \
+  | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | head -1)"
+if [ -n "$PID" ]; then
+  kill -TERM "$PID"
+  for _ in $(seq 1 60); do
+    kill -0 "$PID" 2>/dev/null || break
+    sleep 1
+  done
+fi
+
+# 2. 官方 Transformers wrapper，模型目录默认应包含 scripts/qwen3_vl_embedding.py。
+python compare_vllm_transformers.py reference \
+  --model "$MODEL" \
+  --image "$IMAGE" \
+  --output "$RUN_DIR/precision_transformers.json" \
+  2>&1 | tee "$RUN_DIR/precision_transformers.log"
+
+# 3. 重新启动已开启图片输入的 vLLM 服务并等待 /health 返回 200。
+IMAGE_LIMIT=1 VIDEO_LIMIT=0 \
+LOG_FILE="$RUN_DIR/vllm_server.log" \
+PID_FILE="$RUN_DIR/vllm_server.pid" \
+./restart_vllm_server_ipv6.sh
+until curl -fsS --noproxy '*' -g http://[::1]:8000/health; do sleep 2; done
+
+# 4. 对相同文本与同一图片调用 vLLM，并执行验收。
+python compare_vllm_transformers.py vllm \
+  --endpoint http://[::1]:8000/v1/embeddings \
+  --image "$IMAGE" \
+  --output "$RUN_DIR/precision_vllm.json" \
+  2>&1 | tee "$RUN_DIR/precision_vllm.log"
+python compare_vllm_transformers.py compare \
+  --reference "$RUN_DIR/precision_transformers.json" \
+  --candidate "$RUN_DIR/precision_vllm.json" \
+  --report "$RUN_DIR/precision_report.json" \
+  2>&1 | tee "$RUN_DIR/precision_compare.log"
+
+find "$RUN_DIR" -maxdepth 1 -type f -printf '%f\n' | sort
+```
+
+默认验收线为：每个相同输入的最小余弦 `>=0.995`、pairwise similarity MAE
+`<=0.02`、检索 Top-1 100% 一致。这是工程回归阈值，不是模型质量基准；首次实测
+还应保存报告并人工查看每个 case，之后再以同一数据集的首个通过结果建立固定基线。
+一次运行的 JSON、Transformers/vLLM/比较日志和服务日志统一保存在带时间戳的
+`accuracy_runs/<YYYYmmdd_HHMMSS>/`，该目录已被 Git 忽略。
+若只验文本可省略两个生成向量命令中的 `--image`。官方实现当前声明的推荐环境与
+本交付环境并不完全相同，因此本脚本明确使用目标机已有的 Transformers 4.57.3、
+PyTorch 2.7.1+cu118 和 FP16，以隔离 dtype 与运行环境差异。
 
 `install_target.sh` 会自动调用 `apply_t4_xformers_hotfix.py`，将 embedding
 纯 prefill 改为连续 Q/K/V 的 xFormers CUTLASS attention，从而避开 SM75 上
@@ -246,6 +352,7 @@ SHA256SUMS
 ```bash
 git add README.md environment.yml constraints-t4-cu118.txt \
   install_target.sh verify_target.py verify_qwen3vl_embedding.py \
+  compare_vllm_transformers.py restart_vllm_server_ipv6.sh \
   requirements patches logs \
   'vLLM 0.11.0 在 T4 CUDA 11.8 上的源码编译与内核裁剪.md' \
   .gitignore

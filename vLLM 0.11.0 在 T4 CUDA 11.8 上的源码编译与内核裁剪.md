@@ -27,6 +27,9 @@
 - **回移 Qwen3-VL embedding/pooling：** 将后续版本的最小通用 adapter 行为
   回移到 0.11.0，使 `Qwen3VLForConditionalGeneration` 可转换为
   `Qwen3VLForEmbedding`，并清理生成 head、过滤 `lm_head.*` 权重。
+- **启用视觉 embedding 与精度对照：** 服务默认允许每请求 1 张图片（视频关闭），
+  保留视觉编码器；新增同输入 Transformers/vLLM 两阶段对照，检查逐向量误差、
+  相似度矩阵和检索 Top-1 一致性。
 - **绕开 T4 Triton Attention 阻断：** 增加可恢复的
   `apply_t4_xformers_hotfix.py`，对纯 prefill embedding 使用预编译的 xFormers
   CUTLASS contiguous attention，避开 SM75 上失败的 Triton Unified/Flex
@@ -38,7 +41,8 @@
 最终交付只保证 FP16、KV Cache dtype `auto`、XFormers attention 和
 pooling/embedding 纯 prefill，不支持上述裁剪内核、FP8/DeepGEMM、文本生成
 decode、prefix caching 或 chunked prefill。文本 Embedding API 已在真实 T4、
-R450.191.01、glibc 2.28 与 `cuda-compat-11-8` 环境验证通过。
+R450.191.01、glibc 2.28 与 `cuda-compat-11-8` 环境验证通过；视觉输入和
+Transformers 对照需按第 6.6 节在目标机执行并保存报告。
 
 ## 结论
 
@@ -474,7 +478,7 @@ vllm serve /path/to/Qwen3-VL-model \
   --max-model-len 2048 \
   --max-num-seqs 1 \
   --tensor-parallel-size 1 \
-  --limit-mm-per-prompt '{"image":0,"video":0}' \
+  --limit-mm-per-prompt '{"image":1,"video":0}' \
   --trust-remote-code
 ```
 
@@ -524,11 +528,62 @@ env \
 本次真实目标机结果为 `norm=1.0000000199780135`、35 个 prompt tokens 和
 `completion_tokens=0`；embedding 不生成文本，因此 completion tokens 为 0 正常。
 
-当前命令显式关闭图片输入。需要验证多模态时，将
-`--limit-mm-per-prompt` 改为 `'{"image":1,"video":0}'` 后重启，并使用 chat
-embedding 请求的 `image_url` 内容块；图片通过前不得把文本验收结论扩大为完整
-多模态验收。文本链路通过后，可逐步提高 `--max-num-seqs`、上下文长度和显存
-利用率；prefix caching 与 chunked prefill 在此热补丁中仍不能启用。
+当前命令默认允许每个请求携带 1 张图片并关闭视频；无图片请求仍只执行文本路径。
+视觉请求使用 chat embedding 的 `image_url` 内容块，建议传 data URI，避免服务端
+无法访问客户端本地路径。图片链路通过前不得把文本验收结论扩大为完整多模态验收。
+
+精度验证采用两阶段执行，避免 Transformers 与 vLLM 两份 2B 模型同时占用 T4：
+
+```bash
+cd /root/vllm-qwen3vl-cu118-t4
+export MODEL=/root/Qwen3-VL-Embedding-2B
+export IMAGE=/root/test.jpg
+export RUN_DIR="$PWD/accuracy_runs/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$RUN_DIR"
+set -o pipefail
+echo "accuracy outputs: $RUN_DIR"
+
+PID="$(ss -H -lntp 'sport = :8000' 2>/dev/null \
+  | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | head -1)"
+if [ -n "$PID" ]; then
+  kill -TERM "$PID"
+  for _ in $(seq 1 60); do
+    kill -0 "$PID" 2>/dev/null || break
+    sleep 1
+  done
+fi
+python compare_vllm_transformers.py reference \
+  --model "$MODEL" \
+  --image "$IMAGE" \
+  --output "$RUN_DIR/precision_transformers.json" \
+  2>&1 | tee "$RUN_DIR/precision_transformers.log"
+
+IMAGE_LIMIT=1 VIDEO_LIMIT=0 \
+LOG_FILE="$RUN_DIR/vllm_server.log" \
+PID_FILE="$RUN_DIR/vllm_server.pid" \
+./restart_vllm_server_ipv6.sh
+until curl -fsS --noproxy '*' -g http://[::1]:8000/health; do sleep 2; done
+python compare_vllm_transformers.py vllm \
+  --endpoint http://[::1]:8000/v1/embeddings \
+  --image "$IMAGE" \
+  --output "$RUN_DIR/precision_vllm.json" \
+  2>&1 | tee "$RUN_DIR/precision_vllm.log"
+python compare_vllm_transformers.py compare \
+  --reference "$RUN_DIR/precision_transformers.json" \
+  --candidate "$RUN_DIR/precision_vllm.json" \
+  --report "$RUN_DIR/precision_report.json" \
+  2>&1 | tee "$RUN_DIR/precision_compare.log"
+
+find "$RUN_DIR" -maxdepth 1 -type f -printf '%f\n' | sort
+```
+
+脚本强制对齐 FP16、instruction、chat template、LAST pooling、L2 normalize 和
+图片字节，默认要求相同输入最小余弦不低于 0.995、pairwise similarity MAE 不高于
+0.02、检索 Top-1 完全一致。每次运行的向量 JSON、比较报告、推理日志和 vLLM
+服务日志统一保存在 `accuracy_runs/<时间戳>/`，该目录不会提交到 Git。阈值用于工程回归，不替代在业务标注集上计算 Recall@K、
+MRR/nDCG；首次结果应保存为后续固定基线。文本链路通过后，可逐步提高
+`--max-num-seqs`、上下文长度和显存利用率；prefix caching 与 chunked prefill
+在此热补丁中仍不能启用。
 
 ### 6.7 常见阻断条件
 
@@ -547,4 +602,4 @@ embedding 请求的 `image_url` 内容块；图片通过前不得把文本验收
 
 ## 一句话汇报
 
-面向 T4 / CUDA 11.8 / glibc 2.28，vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 与 CUDA 12-only MoE 内核无法原样编译，我已裁剪不兼容实现并保留 ABI stub、回移 Qwen3-VL embedding/pooling 适配，并用 xFormers CUTLASS contiguous prefill 热补丁避开 SM75 不兼容的 Triton Attention；该方案已在 R450.191.01 真实 T4 上完成 2048 维文本 Embedding API 端到端验收，具体裁剪内核和部署步骤参考本文。
+面向 T4 / CUDA 11.8 / glibc 2.28，vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 与 CUDA 12-only MoE 内核无法原样编译，我已裁剪不兼容实现并保留 ABI stub、回移 Qwen3-VL 文本/视觉 embedding/pooling 适配，并用 xFormers CUTLASS contiguous prefill 热补丁避开 SM75 不兼容的 Triton Attention；服务现默认开放单图片输入，并提供与 Transformers 的同输入精度对照脚本，具体裁剪内核、部署和验收步骤参考本文。

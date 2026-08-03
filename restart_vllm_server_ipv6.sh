@@ -7,6 +7,14 @@ PORT="${PORT:-8000}"
 REPO_DIR="${REPO_DIR:-/root/vllm-qwen3vl-cu118-t4}"
 LOG_FILE="${LOG_FILE:-${REPO_DIR}/vllm_server.log}"
 PID_FILE="${PID_FILE:-${REPO_DIR}/vllm_server.pid}"
+IMAGE_LIMIT="${IMAGE_LIMIT:-1}"
+VIDEO_LIMIT="${VIDEO_LIMIT:-0}"
+MM_LIMITS="{\"image\":${IMAGE_LIMIT},\"video\":${VIDEO_LIMIT}}"
+
+if [[ ! "${IMAGE_LIMIT}" =~ ^[0-9]+$ || ! "${VIDEO_LIMIT}" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: IMAGE_LIMIT and VIDEO_LIMIT must be non-negative integers." >&2
+  exit 1
+fi
 
 if [[ -z "${CONDA_PREFIX:-}" ]]; then
   echo "ERROR: activate vllm-t4-cu118-torch271 first." >&2
@@ -68,7 +76,7 @@ nohup vllm serve "${MODEL_PATH}" \
   --max-model-len 2048 \
   --max-num-seqs 1 \
   --tensor-parallel-size 1 \
-  --limit-mm-per-prompt '{"image":0,"video":0}' \
+  --limit-mm-per-prompt "${MM_LIMITS}" \
   --trust-remote-code \
   >"${LOG_FILE}" 2>&1 &
 
@@ -82,6 +90,7 @@ if ! kill -0 "${server_pid}" 2>/dev/null; then
 fi
 
 echo "Started PID ${server_pid}; log: ${LOG_FILE}"
+echo "Multimodal limits: ${MM_LIMITS}"
 echo "Wait for model loading, then run:"
 echo "  curl --noproxy '*' -g http://[::1]:${PORT}/health"
 echo "  ss -lntp | grep ':${PORT}'"

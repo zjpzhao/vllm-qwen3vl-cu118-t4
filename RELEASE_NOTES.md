@@ -21,6 +21,9 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
 - 已在真实 T4、R450.191.01、glibc 2.28 和 `cuda-compat-11-8` 环境完成服务
   验收：OpenAI `/v1/embeddings` 返回 2048 维归一化向量，L2 norm 为
   `1.0000000199780135`。
+- IPv6 重启脚本默认开启 Qwen3-VL 视觉分支（每请求 1 张图片，视频关闭），并新增
+  Transformers/vLLM 两阶段精度比较脚本，覆盖逐向量误差、相似度矩阵与检索
+  Top-1 一致性。
 
 ## Release assets
 
