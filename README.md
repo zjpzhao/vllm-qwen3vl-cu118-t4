@@ -93,16 +93,22 @@ chmod +x restart_vllm_server_ipv6.sh
 ```bash
 conda activate vllm-t4-cu118-torch271
 cd /root/vllm-qwen3vl-cu118-t4
-IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
+PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
 ```
 
 文本不需要单独的限额开关。上述命令允许每个请求最多 1 张图片和 1 个视频；本项目
 当前精度报告已覆盖文本、图片和图片加文本，尚未把视频纳入固定精度用例。
+显式设置 `PORT=8000` 可避免 shell 中遗留的其他 `PORT` 值导致启动到错误端口。
 
 启动日志必须包含 `Using XFormers backend on V1 engine` 和
 `Supported_tasks: ['encode', 'embed']`。T4 不支持 FA2，因此
 `FA2 is only supported on devices with compute capability >= 8` 是后端探测信息，
 只要随后选择 XFormers 就不影响服务。模型权重不包含在本发布包中。
+
+如果图片请求返回 `At most 0 image(s) may be provided`，说明当前运行
+实例是按 `image=0` 启动的，与模型是否包含视觉编码器无关。用上述
+全模态命令重启，并确认脚本输出
+`Multimodal limits: {"image":1,"video":1}`。
 
 ## API 验收
 
@@ -118,6 +124,7 @@ curl --noproxy '*' -g http://[::1]:8000/health
 代理可能快速返回 HTML 格式的 `521 Web Server Is Down`，该响应不是 vLLM 生成的：
 
 ```bash
+# 替换为目标机的实际 IPv6，不要将真实地址提交到仓库。
 TARGET_IPV6='<TARGET_IPV6>'
 env \
   -u http_proxy -u https_proxy \
@@ -411,10 +418,10 @@ git push origin HEAD
 
 ### 生成小于 2 GiB 的 GitHub Release 分卷
 
-假设完整材料目录为 `/path/to/user-storage/tools/vllm-qwen3vl-cu118-t4`：
+假设完整材料目录为 `/path/to/workspace/vllm-qwen3vl-cu118-t4`：
 
 ```bash
-cd /path/to/user-storage/tools
+cd /path/to/workspace
 tar --exclude='.git' -cf vllm-qwen3vl-cu118-t4-offline.tar \
   vllm-qwen3vl-cu118-t4
 sha256sum vllm-qwen3vl-cu118-t4-offline.tar \
@@ -432,9 +439,9 @@ gh release create v0.11.0-t4-cu118-torch271 \
   --title 'vLLM 0.11.0 for T4 / CUDA 11.8 / Torch 2.7.1' \
   --notes-file README.md
 gh release upload v0.11.0-t4-cu118-torch271 \
-  /path/to/user-storage/tools/vllm-qwen3vl-cu118-t4-offline.tar.part-* \
-  /path/to/user-storage/tools/SHA256SUMS \
-  /path/to/user-storage/tools/vllm-qwen3vl-cu118-t4-offline.tar.sha256
+  /path/to/workspace/vllm-qwen3vl-cu118-t4-offline.tar.part-* \
+  /path/to/workspace/SHA256SUMS \
+  /path/to/workspace/vllm-qwen3vl-cu118-t4-offline.tar.sha256
 ```
 
 ### 下载后重组

@@ -269,7 +269,7 @@ Transformers 的真实 LAST token 是随后 index 36/31 的 `<|endoftext|>`，to
 conda activate vllm-t4-cu118-torch271
 cd /root/vllm-qwen3vl-cu118-t4
 
-IMAGE_LIMIT=1 VIDEO_LIMIT=1 \
+PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 \
   ./restart_vllm_server_ipv6.sh
 ```
 
@@ -285,6 +285,7 @@ curl --noproxy '*' -s -g http://[::1]:8000/v1/models | python -m json.tool
 从开发机访问时要绕过环境代理：
 
 ```bash
+# 替换为目标机的实际 IPv6，不要将真实地址提交到仓库。
 TARGET_IPV6='<TARGET_IPV6>'
 env \
   -u http_proxy -u https_proxy \

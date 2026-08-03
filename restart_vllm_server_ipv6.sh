@@ -11,6 +11,10 @@ IMAGE_LIMIT="${IMAGE_LIMIT:-1}"
 VIDEO_LIMIT="${VIDEO_LIMIT:-0}"
 MM_LIMITS="{\"image\":${IMAGE_LIMIT},\"video\":${VIDEO_LIMIT}}"
 
+if [[ ! "${PORT}" =~ ^[0-9]+$ ]] || ((PORT < 1 || PORT > 65535)); then
+  echo "ERROR: PORT must be an integer between 1 and 65535." >&2
+  exit 1
+fi
 if [[ ! "${IMAGE_LIMIT}" =~ ^[0-9]+$ || ! "${VIDEO_LIMIT}" =~ ^[0-9]+$ ]]; then
   echo "ERROR: IMAGE_LIMIT and VIDEO_LIMIT must be non-negative integers." >&2
   exit 1
@@ -31,22 +35,35 @@ fi
 
 cd "${REPO_DIR}"
 
-current_pid="$(
+listener_pid() {
   ss -H -lntp "sport = :${PORT}" 2>/dev/null \
     | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p; t found; b; :found q'
-)"
+}
+
+current_pid="$(listener_pid || true)"
 if [[ -n "${current_pid}" ]]; then
   echo "Stopping PID ${current_pid} on port ${PORT}..."
-  kill -TERM "${current_pid}"
+  kill -TERM "${current_pid}" 2>/dev/null || true
   for _ in $(seq 1 30); do
-    if ! kill -0 "${current_pid}" 2>/dev/null; then
+    remaining_listener="$(listener_pid || true)"
+    process_state="$(ps -o stat= -p "${current_pid}" 2>/dev/null \
+      | tr -d '[:space:]' || true)"
+    if [[ -z "${remaining_listener}" || "${process_state}" == Z* ]]; then
       break
     fi
     sleep 1
   done
-  if kill -0 "${current_pid}" 2>/dev/null; then
-    echo "ERROR: PID ${current_pid} did not stop after 30 seconds." >&2
+  remaining_listener="$(listener_pid || true)"
+  if [[ -n "${remaining_listener}" ]]; then
+    echo "ERROR: port ${PORT} is still listened on by PID ${remaining_listener}." >&2
     exit 1
+  fi
+  process_state="$(ps -o stat= -p "${current_pid}" 2>/dev/null \
+    | tr -d '[:space:]' || true)"
+  if [[ "${process_state}" == Z* ]]; then
+    echo "Listener stopped; PID ${current_pid} is a harmless zombie awaiting parent reap."
+  else
+    echo "Listener on port ${PORT} stopped."
   fi
 fi
 

@@ -82,7 +82,7 @@ EOS/LAST pooling 根因和最终逐用例结果见
 构建工具链固定为：
 
 ```bash
-export BUILD_ENV=/path/to/user-storage/miniconda3/envs/vllm-cu118-torch271-sysroot
+export BUILD_ENV=/path/to/miniconda3/envs/vllm-cu118-torch271-sysroot
 export CUDA_HOME=/tmp/cuda-11.8-sysroot-view
 export PATH="$BUILD_ENV/bin:$CUDA_HOME/bin:/usr/bin:/bin"
 export CC="$BUILD_ENV/bin/x86_64-conda-linux-gnu-gcc"
@@ -222,11 +222,11 @@ vLLM 0.11.0 已有 pooling 基础设施，但 Qwen3-VL 的生成模型同时在�
 ## 4. 最终构建命令
 
 ```bash
-cd /path/to/user-storage/tools/vllm
+cd /path/to/workspace/vllm
 bash scripts/build_t4_cu118_glibc228.sh
 ```
 
-脚本固定 `sysroot_linux-64=2.28` 构建环境、隔离 CUDA 11.8 view、`TORCH_CUDA_ARCH_LIST=7.5`、`MAX_JOBS=8`、`NVCC_THREADS=1` 和 `CMAKE_BUILD_TYPE=Release`，并把完整输出 `tee` 到 `/path/to/user-storage/tools/vllm/build.log`。如果构建被外部中止，保留 `build/` 后直接重跑脚本，Ninja 会增量续编；不要再次删除缓存，也不要在 32 GiB cgroup 中提高到 16 worker。
+脚本固定 `sysroot_linux-64=2.28` 构建环境、隔离 CUDA 11.8 view、`TORCH_CUDA_ARCH_LIST=7.5`、`MAX_JOBS=8`、`NVCC_THREADS=1` 和 `CMAKE_BUILD_TYPE=Release`，并把完整输出 `tee` 到 `/path/to/workspace/vllm/build.log`。如果构建被外部中止，保留 `build/` 后直接重跑脚本，Ninja 会增量续编；不要再次删除缓存，也不要在 32 GiB cgroup 中提高到 16 worker。
 
 链接完成后必须修复 Conda compiler 注入的绝对 RPATH，再用 `wheel pack` 重新生成 RECORD。最终四个扩展只允许以下相对 RUNPATH：
 
@@ -348,7 +348,7 @@ wheelhouse 文件名扫描确认没有 `cupy-cuda12x`、CUDA 12 runtime、`libcu
 最终材料整理到：
 
 ```text
-/path/to/user-storage/tools/vllm-qwen3vl-cu118-t4/
+/path/to/workspace/vllm-qwen3vl-cu118-t4/
 ```
 
 ### 6.4 在目标机安装
@@ -503,10 +503,11 @@ chmod +x restart_vllm_server_ipv6.sh
 如需同时开放文本、图片和视频，使用同一 IPv6 脚本覆盖两个多模态限额：
 
 ```bash
-IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
+PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
 ```
 
 文本模态无需单独开关；上述配置允许每个请求最多 1 张图片和 1 个视频。
+显式设置 `PORT=8000` 可避免 shell 中遗留的其他端口值被脚本继承。
 
 脚本仅终止当前占用 8000 端口的进程，等待其正常退出后以本文完整参数后台启动；
 PID 和日志分别保存为 `vllm_server.pid`、`vllm_server.log`。
@@ -526,6 +527,7 @@ curl --noproxy '*' -g http://[::1]:8000/health
 从开发机请求目标机 IPv6 时，应清除环境代理再测试：
 
 ```bash
+# 替换为目标机的实际 IPv6，不要将真实地址提交到仓库。
 TARGET_IPV6='<TARGET_IPV6>'
 env \
   -u http_proxy -u https_proxy \
@@ -630,6 +632,8 @@ MRR/nDCG；首次结果应保存为后续固定基线。文本链路通过后，
 | `libcudart.so.11.0` 缺失 | 安装/恢复 cu118 用户态 runtime，并检查环境库路径 |
 | XFormers operator 不可用 | 使用同一 PyTorch/CUDA ABI 和 `sm_75` 重新源码构建 |
 | `Unsupported conversion from f16 to f16` | 确认已应用 `apply_t4_xformers_hotfix.py`、后端为 XFORMERS，并关闭 prefix caching/chunked prefill |
+| `At most 0 image(s) may be provided` | 当前实例以 `image=0` 启动；用 `PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh` 重启 |
+| 旧 PID 终止后仍显示存在 | 旧脚本会把 zombie 误判为活跃进程；新脚本以端口是否释放为准 |
 | `no kernel image is available` | 检查相关 torch/vision/XFormers wheel 是否包含 `sm_75` |
 | T4 OOM | 换更小 checkpoint，降低上下文长度、并发和显存利用率 |
 | IPv6 请求返回代理 HTML 521/502 | 服务使用 `--host ::`，开发机清除代理或设置客户端 `trust_env=False`；先以 `/health` 的 HTTP 200 验证直连 |
