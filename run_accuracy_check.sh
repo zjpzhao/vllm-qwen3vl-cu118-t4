@@ -10,6 +10,9 @@ RUNS_DIR="${RUNS_DIR:-${REPO_DIR}/accuracy_runs}"
 PORT="${PORT:-8000}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3-VL-Embedding-2B}"
 OMP_NUM_THREADS="${OMP_NUM_THREADS:-16}"
+ACCURACY_CLEANUP_DONE=0
+ACCURACY_CLEANUP_STATUS=0
+ACCURACY_PID_FILE=""
 
 usage() {
   cat <<'EOF'
@@ -79,6 +82,50 @@ stop_vllm() {
   done
   echo "ERROR: PID ${pid} did not stop after 60 seconds." >&2
   exit 1
+}
+
+cleanup_accuracy_vllm() {
+  if ((ACCURACY_CLEANUP_DONE)); then
+    return
+  fi
+  ACCURACY_CLEANUP_DONE=1
+
+  echo "Stopping all vLLM processes created or left by the accuracy run..."
+  local tracked_pid=""
+  if [[ -s "${ACCURACY_PID_FILE}" ]]; then
+    read -r tracked_pid <"${ACCURACY_PID_FILE}" || true
+  fi
+  if [[ "${tracked_pid}" =~ ^[0-9]+$ ]]; then
+    kill -TERM "${tracked_pid}" 2>/dev/null || true
+  fi
+  pkill -TERM -f \
+    'vllm\.entrypoints\.openai\.api_server|EngineCore|multiprocessing\.spawn.*vllm' \
+    2>/dev/null || true
+  sleep 3
+  if [[ "${tracked_pid}" =~ ^[0-9]+$ ]]; then
+    kill -KILL "${tracked_pid}" 2>/dev/null || true
+  fi
+  pkill -KILL -f \
+    'vllm\.entrypoints\.openai\.api_server|EngineCore|multiprocessing\.spawn.*vllm' \
+    2>/dev/null || true
+
+  if [[ -n "${ACCURACY_PID_FILE}" ]]; then
+    rm -f -- "${ACCURACY_PID_FILE}"
+  fi
+
+  local remaining_pid
+  remaining_pid="$(listener_pid || true)"
+  if [[ -n "${remaining_pid}" ]]; then
+    kill -KILL "${remaining_pid}" 2>/dev/null || true
+    sleep 1
+    remaining_pid="$(listener_pid || true)"
+  fi
+  if [[ -n "${remaining_pid}" ]]; then
+    echo "ERROR: vLLM cleanup failed; PID ${remaining_pid} still listens on port ${PORT}." >&2
+    ACCURACY_CLEANUP_STATUS=1
+  else
+    echo "vLLM cleanup passed: no listener remains on port ${PORT}."
+  fi
 }
 
 prepare_runtime_environment() {
@@ -155,6 +202,9 @@ run_vllm_and_compare() {
   echo "RUN_DIR=${run_dir}"
   echo "T4_EXECUTION_MODE=${T4_EXECUTION_MODE:-eager}"
   echo "OMP_NUM_THREADS=${OMP_NUM_THREADS}"
+  ACCURACY_PID_FILE="${run_dir}/vllm_server.pid"
+  trap cleanup_accuracy_vllm EXIT
+  trap 'exit 130' INT TERM
   prepare_runtime_environment
 
   IMAGE_LIMIT=1 \
@@ -186,25 +236,31 @@ run_vllm_and_compare() {
     compare_status=$?
   fi
 
+  cleanup_accuracy_vllm
+  trap - EXIT INT TERM
   find "${run_dir}" -maxdepth 1 -type f -printf '%f\n' | sort
 
   python - "${run_dir}/precision_report.json" \
-    "${T4_EXECUTION_MODE:-eager}" <<'PY'
+    "${T4_EXECUTION_MODE:-eager}" "${ACCURACY_CLEANUP_STATUS}" <<'PY'
 import json
 import sys
 
-report_path, execution_mode = sys.argv[1:]
+report_path, execution_mode, cleanup_status_raw = sys.argv[1:]
+cleanup_passed = cleanup_status_raw == "0"
 with open(report_path, encoding="utf-8") as handle:
     report = json.load(handle)
 
 summary = report["summary"]
 thresholds = report["thresholds"]
 passed = bool(report["passed"])
+overall_passed = passed and cleanup_passed
 
 print()
 print("=" * 72)
-print("最终精度结论：" + ("PASS" if passed else "FAIL"))
+print("最终测试结论：" + ("PASS" if overall_passed else "FAIL"))
+print("精度判定：" + ("PASS" if passed else "FAIL"))
 print(f"执行模式：{execution_mode}")
+print("服务清理：" + ("PASS（vLLM 已退出）" if cleanup_passed else "FAIL"))
 print(
     "最低同输入 cosine："
     f"{summary['min_same_input_cosine']:.10f} "
@@ -219,11 +275,13 @@ print(
     "检索 Top-1 一致率："
     f"{summary['retrieval_top1_agreement'] * 100:.2f}%"
 )
-if passed:
+if passed and cleanup_passed:
     print(
         "结论：vLLM 与 Transformers 精度对齐，当前执行模式未发现可观测的精度回归，"
-        "可以继续稳定性和性能验证。"
+        "且测试服务已完全退出，可以继续稳定性和性能验证。"
     )
+elif passed:
+    print("结论：精度对齐，但 vLLM 服务清理失败；本轮整体测试不通过。")
 else:
     failures = "; ".join(report.get("failures") or ["unknown failure"])
     print(f"结论：精度验收未通过，不应进入性能验证；失败原因：{failures}")
@@ -233,6 +291,9 @@ PY
 
   if ((compare_status != 0)); then
     return "${compare_status}"
+  fi
+  if ((ACCURACY_CLEANUP_STATUS != 0)); then
+    return 1
   fi
 }
 

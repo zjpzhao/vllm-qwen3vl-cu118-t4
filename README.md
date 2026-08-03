@@ -131,7 +131,9 @@ T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh vllm
 ```
 
 精度脚本在详细 JSON 和产物列表之后还会打印最终 PASS/FAIL 结论、执行模式、三项
-关键指标及报告路径；比较失败时会先打印失败原因，再返回非零退出码。
+关键指标及报告路径；比较失败时会先打印失败原因，再返回非零退出码。无论正常
+完成、比较失败还是中途异常，vLLM 阶段都会先 TERM、等待 3 秒，再 KILL 残留的
+API Server、EngineCore 和 vLLM spawn 进程；正常路径确认端口释放后才打印最终结论。
 
 若捕获失败、OOM 或精度不通过，执行
 `T4_EXECUTION_MODE=eager ./restart_vllm_server_ipv6.sh` 即可回到已验证路径。

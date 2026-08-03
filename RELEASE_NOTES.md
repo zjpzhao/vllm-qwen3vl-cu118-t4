@@ -32,6 +32,8 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
   TorchInductor，避免重新触发 SM75 Triton lowering；默认仍为已验证的 eager/O0。
 - 服务和两阶段精度脚本默认导出 `OMP_NUM_THREADS=16`；精度脚本在所有详细输出
   之后打印明确的最终 PASS/FAIL 结论和关键阈值对照，失败时仍保留非零退出码。
+- 精度脚本的 vLLM 阶段新增强制退出清理：正常、失败和信号退出都会先 TERM，等待
+  3 秒后 KILL 残留 API Server、EngineCore 与 vLLM spawn 进程，并确认端口释放。
 - 修复 chat embedding 与官方处理器的 LAST pooling 对齐：所有标准请求显式设置
   `add_special_tokens=true`，确保末尾 `<|endoftext|>` 被保留并参与 pooling。
 - 真实 T4 的 6 用例文本/图片精度报告已通过：最小同输入 cosine
