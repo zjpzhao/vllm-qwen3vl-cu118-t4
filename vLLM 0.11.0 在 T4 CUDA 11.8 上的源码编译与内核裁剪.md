@@ -472,6 +472,7 @@ export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 vllm serve /path/to/Qwen3-VL-model \
   --host :: \
   --port 8000 \
+  --disable-uvicorn-access-log \
   --served-model-name Qwen3-VL-Embedding-2B \
   --runner pooling \
   --convert embed \
@@ -483,7 +484,8 @@ vllm serve /path/to/Qwen3-VL-model \
   --no-enable-chunked-prefill \
   --gpu-memory-utilization 0.80 \
   --max-model-len 2048 \
-  --max-num-seqs 1 \
+  --max-num-seqs 8 \
+  --max-num-batched-tokens 4096 \
   --tensor-parallel-size 1 \
   --limit-mm-per-prompt '{"image":1,"video":0}' \
   --trust-remote-code
@@ -503,7 +505,9 @@ chmod +x restart_vllm_server_ipv6.sh
 如需同时开放文本、图片和视频，使用同一 IPv6 脚本覆盖两个多模态限额：
 
 ```bash
-PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
+PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 \
+MAX_NUM_SEQS=8 MAX_NUM_BATCHED_TOKENS=4096 \
+./restart_vllm_server_ipv6.sh
 ```
 
 文本模态无需单独开关；上述配置允许每个请求最多 1 张图片和 1 个视频。
@@ -557,9 +561,21 @@ Transformers 与 vLLM 的精度对齐方法、分阶段命令、诊断过程和�
 重复展开，统一见
 [Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md](Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md)。
 
-服务基础验收通过后，可逐步提高
-`--max-num-seqs`、上下文长度和显存利用率；prefix caching 与 chunked prefill
-在此热补丁中仍不能启用。
+服务脚本默认使用 `MAX_NUM_SEQS=8` 和 `MAX_NUM_BATCHED_TOKENS=4096`。
+`MAX_NUM_SEQS=1` 会让调度器每个 iteration 最多运行一条序列，从而完全禁止
+请求级合批；这时无论客户端增加多少并发，都只会增加等待队列。视觉请求 token
+较多且显存仍有余量时，可逐步尝试 `MAX_NUM_BATCHED_TOKENS=8192`，若
+`vllm:num_requests_running` 长期达到 8 且仍有等待请求，再尝试
+`MAX_NUM_SEQS=16`。发生 OOM 时先降低 token budget。
+脚本同时关闭 Uvicorn 的逐请求 access log，避免高 QPS 时日志写盘占用前端 CPU；
+vLLM 周期统计和 `/metrics` 保持开启。
+
+单张 T4 保持 `--tensor-parallel-size 1`。数据并行需要额外 GPU；
+`--api-server-count 2` 仅适用于 CPU 多模态预处理或 HTTP 前端成为瓶颈的情况，
+不会增加单卡模型执行并行度，且应单独验证多前端进程的停止和重启行为。压测期间用 `/metrics` 的
+`vllm:num_requests_running`、`vllm:num_requests_waiting` 和
+`nvidia-smi dmon -s pucm -d 1` 区分调度、前端与 GPU 瓶颈。prefix caching 与
+chunked prefill 在此热补丁中仍不能启用。
 
 ### 6.7 常见阻断条件
 

@@ -54,6 +54,7 @@ set -o pipefail
 vllm serve /root/Qwen3-VL-Embedding-2B \
   --host :: \
   --port 8000 \
+  --disable-uvicorn-access-log \
   --served-model-name Qwen3-VL-Embedding-2B \
   --runner pooling \
   --convert embed \
@@ -65,7 +66,8 @@ vllm serve /root/Qwen3-VL-Embedding-2B \
   --no-enable-chunked-prefill \
   --gpu-memory-utilization 0.80 \
   --max-model-len 2048 \
-  --max-num-seqs 1 \
+  --max-num-seqs 8 \
+  --max-num-batched-tokens 4096 \
   --tensor-parallel-size 1 \
   --limit-mm-per-prompt '{"image":1,"video":0}' \
   --trust-remote-code \
@@ -86,14 +88,21 @@ chmod +x restart_vllm_server_ipv6.sh
 脚本会向当前监听 8000 端口的进程发送 `SIGTERM`，最多等待 30 秒，然后使用
 上述完整参数在后台启动服务；PID 写入 `vllm_server.pid`，输出写入
 `vllm_server.log`。如模型或端口不同，可在命令前设置 `MODEL_PATH`、
-`SERVED_MODEL_NAME` 或 `PORT`。
+`SERVED_MODEL_NAME`、`PORT`、`MAX_MODEL_LEN`、`MAX_NUM_SEQS`、
+`MAX_NUM_BATCHED_TOKENS`。脚本默认允许每个调度 iteration
+合批 8 条序列，并把总 token budget 设为 4096；旧版的
+`--max-num-seqs 1` 会完全禁止请求级合批，客户端增加并发只会形成等待队列。
+高吞吐启动默认关闭 Uvicorn 的逐请求 access log，避免日志写盘成为前端瓶颈；
+vLLM 的周期统计和 `/metrics` 仍保留。
 
 如需同时开放文本、图片和视频，保持同一 IPv6 监听配置并覆盖多模态限额：
 
 ```bash
 conda activate vllm-t4-cu118-torch271
 cd /root/vllm-qwen3vl-cu118-t4
-PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
+PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 \
+MAX_NUM_SEQS=8 MAX_NUM_BATCHED_TOKENS=4096 \
+./restart_vllm_server_ipv6.sh
 ```
 
 文本不需要单独的限额开关。上述命令允许每个请求最多 1 张图片和 1 个视频；本项目
@@ -109,6 +118,34 @@ PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
 实例是按 `image=0` 启动的，与模型是否包含视觉编码器无关。用上述
 全模态命令重启，并确认脚本输出
 `Multimodal limits: {"image":1,"video":1}`。
+
+### 吞吐量与合批调优
+
+单张 T4 保持 `--tensor-parallel-size 1`；数据并行需要额外 GPU，不应在同一张
+T4 上启动多个模型副本。先以默认的 `MAX_NUM_SEQS=8`、
+`MAX_NUM_BATCHED_TOKENS=4096` 压测；视觉请求较长且显存仍有余量时，可尝试：
+
+```bash
+PORT=8000 IMAGE_LIMIT=1 VIDEO_LIMIT=1 \
+MAX_NUM_SEQS=8 MAX_NUM_BATCHED_TOKENS=8192 \
+./restart_vllm_server_ipv6.sh
+```
+
+若 OOM，先把 token budget 降回 4096；若 `vllm:num_requests_running` 长期达到 8
+且仍有等待请求，再尝试 `MAX_NUM_SEQS=16`。使用下面的命令在压测期间确认是否
+真正形成合批：
+
+```bash
+watch -n 0.2 \
+  "curl --noproxy '*' -s -g http://[::1]:8000/metrics | \
+   grep -E 'vllm:num_requests_(running|waiting)'"
+nvidia-smi dmon -s pucm -d 1
+```
+
+只有在调度队列基本为空、GPU 仍空闲且 CPU 图片解码/HTTP 前端饱和时，才考虑
+单独测试 `--api-server-count 2`。它只扩展 API 前端，不会增加单张 GPU 的模型执行
+并行度，且需要单独验证多前端进程的停止和重启行为。
+当前 T4 XFormers 热补丁仍要求 prefix caching 与 chunked prefill 保持关闭。
 
 ## API 验收
 
