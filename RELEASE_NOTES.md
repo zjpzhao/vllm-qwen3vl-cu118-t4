@@ -25,11 +25,14 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
   验收：OpenAI `/v1/embeddings` 返回 2048 维归一化向量，L2 norm 为
   `1.0000000199780135`。
 - IPv6 重启脚本默认开启 Qwen3-VL 视觉分支（每请求 1 张图片，视频关闭），并新增
-  Transformers/vLLM 两阶段精度比较脚本，覆盖逐向量误差、相似度矩阵与检索
+  Transformers/vLLM 单命令串行精度比较脚本，覆盖逐向量误差、相似度矩阵与检索
   Top-1 一致性。
 - IPv6 重启脚本新增可回退的 `T4_EXECUTION_MODE=cudagraph` 实验模式：使用
   vLLM level 3 做 piecewise Dynamo 分段和 CUDA Graph capture，但显式关闭
   TorchInductor，避免重新触发 SM75 Triton lowering；默认仍为已验证的 eager/O0。
+- 真实 T4 后续验证确认上述 CUDA Graph 实验在 profile 阶段被 TorchDynamo 的动态
+  GEMM dispatch 阻断，尚未进入 capture；生产模式固定为 eager/O0，不开启
+  TorchDynamo 或 TorchInductor。完整结论见独立优化部署文档。
 - 服务和单命令串行精度脚本默认导出 `OMP_NUM_THREADS=16`；精度脚本在所有详细输出
   之后打印明确的最终 PASS/FAIL 结论和关键阈值对照，失败时仍保留非零退出码。
 - `run_accuracy_check.sh` 不再要求手动分阶段：一次调用依次运行 Transformers、

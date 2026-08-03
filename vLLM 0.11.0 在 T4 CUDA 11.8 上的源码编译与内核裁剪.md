@@ -521,8 +521,8 @@ MAX_NUM_SEQS=8 MAX_NUM_BATCHED_TOKENS=4096 \
 PID 和日志分别保存为 `vllm_server.pid`、`logs/vllm_server.log`。日志目录由脚本
 自动创建，也可通过 `LOG_DIR` 或 `LOG_FILE` 覆盖。
 
-默认 `T4_EXECUTION_MODE=eager` 保持 `--enforce-eager -O0`。可按下一阶段实验
-单独启用 piecewise CUDA Graph：
+默认 `T4_EXECUTION_MODE=eager` 保持 `--enforce-eager -O0`。以下
+piecewise CUDA Graph 命令仅保留用于复现失败，不得作为生产启动方式：
 
 ```bash
 T4_EXECUTION_MODE=cudagraph ./restart_vllm_server_ipv6.sh
@@ -537,13 +537,13 @@ CUDA Graph 外运行。默认 capture sizes 是
 `CUDAGRAPH_CAPTURE_SIZES_JSON` 覆盖，但所有值必须为正整数且不超过
 `MAX_NUM_BATCHED_TOKENS`。
 
-该入口尚需在真实 T4 上重新完成启动和精度验收。日志应显示
-`cudagraph_mode: 1`、`use_inductor: false` 和 graph capture 完成；出现 OOM、capture
-错误或精度回归时立即回退。单命令依次运行 Transformers 与 vLLM 并验证 CUDA
-Graph 模式：
+真实 T4 已完成验证并确认该入口不可用：即使 `use_inductor=false`，level 3 仍需
+TorchDynamo 捕获计算图，而动态 GEMM dispatch 会触发
+`non-function or method super: _disabled_torch_function_impl`。失败发生在 profile
+阶段，尚未进入 graph capture；生产模式必须回退 eager：
 
 ```bash
-T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh
+T4_EXECUTION_MODE=eager OMP_NUM_THREADS=16 ./run_accuracy_check.sh
 ```
 
 回退命令：

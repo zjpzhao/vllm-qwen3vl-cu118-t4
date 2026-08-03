@@ -6,6 +6,7 @@
 
 详细资料：
 
+- [T4 XFormers 热补丁、Eager 性能模式与生产部署](T4-XFormers-热补丁与-Eager-优化部署说明.md)
 - [Transformers/vLLM 精度对齐测试、问题定位与最终结果](Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md)
 - [源码编译、回移和内核裁剪说明](vLLM%200.11.0%20在%20T4%20CUDA%2011.8%20上的源码编译与内核裁剪.md)
 
@@ -21,6 +22,7 @@ conda activate vllm-t4-cu118-torch271
 export VLLM_USE_V1=1
 export VLLM_ATTENTION_BACKEND=XFORMERS
 export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
+export OMP_NUM_THREADS=16
 export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
 export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 python verify_target.py
@@ -99,10 +101,11 @@ chmod +x restart_vllm_server_ipv6.sh
 高吞吐启动默认关闭 Uvicorn 的逐请求 access log，避免日志写盘成为前端瓶颈；
 vLLM 的周期统计和 `/metrics` 仍保留。
 
-### T4 CUDA Graph 实验模式
+### T4 CUDA Graph 实验结论：失败
 
 默认 `T4_EXECUTION_MODE=eager` 继续使用已经完成精度验证的
-`--enforce-eager -O0`。下一阶段可单独开启 piecewise CUDA Graph：
+`--enforce-eager -O0`。仓库保留以下 piecewise CUDA Graph 入口用于复现，不得
+作为生产启动方式：
 
 ```bash
 T4_EXECUTION_MODE=cudagraph ./restart_vllm_server_ipv6.sh
@@ -122,12 +125,13 @@ CUDAGRAPH_CAPTURE_SIZES_JSON='[64,128,256,512,1024]' \
 ./restart_vllm_server_ipv6.sh
 ```
 
-这是可回退的实验入口，不代表已获得性能提升。启动日志应显示
-`cudagraph_mode: 1`、`use_inductor: false`、CUDA Graph capture 完成且服务健康；
-随后必须用相同模式重新运行精度检查：
+真实 T4 已确认该模式在引擎 profile 阶段失败：虽然 `use_inductor=false`，level 3
+仍需要 TorchDynamo 捕获计算图，而当前动态 GEMM dispatch 会触发
+`non-function or method super: _disabled_torch_function_impl`。它没有进入 CUDA
+Graph capture，更不能继续开启 TorchInductor。生产精度检查必须使用 eager：
 
 ```bash
-T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh
+T4_EXECUTION_MODE=eager OMP_NUM_THREADS=16 ./run_accuracy_check.sh
 ```
 
 精度脚本在详细 JSON 和产物列表之后还会打印最终 PASS/FAIL 结论、执行模式、三项
@@ -135,8 +139,9 @@ T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh
 完成、比较失败还是中途异常，vLLM 阶段都会先 TERM、等待 3 秒，再 KILL 残留的
 API Server、EngineCore 和 vLLM spawn 进程；正常路径确认端口释放后才打印最终结论。
 
-若捕获失败、OOM 或精度不通过，执行
-`T4_EXECUTION_MODE=eager ./restart_vllm_server_ipv6.sh` 即可回到已验证路径。
+如误启 CUDA Graph 或需要从失败实验恢复，执行
+`T4_EXECUTION_MODE=eager OMP_NUM_THREADS=16 ./restart_vllm_server_ipv6.sh`
+回到已验证路径。
 
 如需同时开放文本、图片和视频，保持同一 IPv6 监听配置并覆盖多模态限额：
 
