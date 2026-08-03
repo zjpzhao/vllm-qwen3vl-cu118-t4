@@ -92,7 +92,8 @@ chmod +x restart_vllm_server_ipv6.sh
 目录，或用 `LOG_FILE` 指定完整日志路径。如模型或端口不同，可在命令前设置 `MODEL_PATH`、
 `SERVED_MODEL_NAME`、`PORT`、`MAX_MODEL_LEN`、`MAX_NUM_SEQS`、
 `MAX_NUM_BATCHED_TOKENS`、`T4_EXECUTION_MODE` 和
-`CUDAGRAPH_CAPTURE_SIZES_JSON`。脚本默认允许每个调度 iteration
+`CUDAGRAPH_CAPTURE_SIZES_JSON`。服务默认导出 `OMP_NUM_THREADS=16`，也可在
+命令前覆盖。脚本默认允许每个调度 iteration
 合批 8 条序列，并把总 token budget 设为 4096；旧版的
 `--max-num-seqs 1` 会完全禁止请求级合批，客户端增加并发只会形成等待队列。
 高吞吐启动默认关闭 Uvicorn 的逐请求 access log，避免日志写盘成为前端瓶颈；
@@ -128,6 +129,9 @@ CUDAGRAPH_CAPTURE_SIZES_JSON='[64,128,256,512,1024]' \
 ```bash
 T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh vllm
 ```
+
+精度脚本在详细 JSON 和产物列表之后还会打印最终 PASS/FAIL 结论、执行模式、三项
+关键指标及报告路径；比较失败时会先打印失败原因，再返回非零退出码。
 
 若捕获失败、OOM 或精度不通过，执行
 `T4_EXECUTION_MODE=eager ./restart_vllm_server_ipv6.sh` 即可回到已验证路径。

@@ -121,6 +121,10 @@ curl -fL --retry 10 \
 ./run_accuracy_check.sh vllm
 ```
 
+两个阶段默认设置 `OMP_NUM_THREADS=16`，可在命令前用同名环境变量覆盖。vLLM
+阶段结束时会在 JSON 和文件列表之后打印最终 PASS/FAIL、执行模式、关键指标与报告
+路径；若失败，会先打印失败原因再返回非零退出码。
+
 查看最终结论：
 
 ```bash

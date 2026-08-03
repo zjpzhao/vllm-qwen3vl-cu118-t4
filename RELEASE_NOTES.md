@@ -30,6 +30,8 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
 - IPv6 重启脚本新增可回退的 `T4_EXECUTION_MODE=cudagraph` 实验模式：使用
   vLLM level 3 做 piecewise Dynamo 分段和 CUDA Graph capture，但显式关闭
   TorchInductor，避免重新触发 SM75 Triton lowering；默认仍为已验证的 eager/O0。
+- 服务和两阶段精度脚本默认导出 `OMP_NUM_THREADS=16`；精度脚本在所有详细输出
+  之后打印明确的最终 PASS/FAIL 结论和关键阈值对照，失败时仍保留非零退出码。
 - 修复 chat embedding 与官方处理器的 LAST pooling 对齐：所有标准请求显式设置
   `add_special_tokens=true`，确保末尾 `<|endoftext|>` 被保留并参与 pooling。
 - 真实 T4 的 6 用例文本/图片精度报告已通过：最小同输入 cosine

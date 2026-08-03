@@ -13,6 +13,7 @@ VIDEO_LIMIT="${VIDEO_LIMIT:-0}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-2048}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-8}"
 MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-4096}"
+OMP_NUM_THREADS="${OMP_NUM_THREADS:-16}"
 T4_EXECUTION_MODE="${T4_EXECUTION_MODE:-eager}"
 CUDAGRAPH_CAPTURE_SIZES_JSON="${CUDAGRAPH_CAPTURE_SIZES_JSON:-\
 [32,64,128,256,512,1024,2048]}"
@@ -33,6 +34,10 @@ for setting in MAX_MODEL_LEN MAX_NUM_SEQS MAX_NUM_BATCHED_TOKENS; do
     exit 1
   fi
 done
+if [[ ! "${OMP_NUM_THREADS}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: OMP_NUM_THREADS must be a positive integer." >&2
+  exit 1
+fi
 if ((MAX_NUM_BATCHED_TOKENS < MAX_MODEL_LEN)); then
   echo "ERROR: MAX_NUM_BATCHED_TOKENS must be >= MAX_MODEL_LEN because chunked prefill is disabled." >&2
   exit 1
@@ -121,6 +126,7 @@ unset CUDA_HOME
 export VLLM_USE_V1=1
 export VLLM_ATTENTION_BACKEND=XFORMERS
 export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
+export OMP_NUM_THREADS
 export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
 export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 export LD_LIBRARY_PATH="/usr/local/cuda-11.8/compat:${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
@@ -160,6 +166,7 @@ fi
 echo "Started PID ${server_pid}; log: ${LOG_FILE}"
 echo "Multimodal limits: ${MM_LIMITS}"
 echo "Scheduler: max_model_len=${MAX_MODEL_LEN}, max_num_seqs=${MAX_NUM_SEQS}, max_num_batched_tokens=${MAX_NUM_BATCHED_TOKENS}"
+echo "CPU threading: OMP_NUM_THREADS=${OMP_NUM_THREADS}"
 echo "Execution mode: ${T4_EXECUTION_MODE}"
 if [[ "${T4_EXECUTION_MODE}" == "cudagraph" ]]; then
   echo "CUDA graph capture sizes: ${CUDAGRAPH_CAPTURE_SIZES_JSON}"

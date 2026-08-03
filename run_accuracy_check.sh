@@ -9,6 +9,7 @@ IMAGE_PATH="${IMAGE_PATH:-${REPO_DIR}/accuracy_inputs/qwen_vl_demo.jpeg}"
 RUNS_DIR="${RUNS_DIR:-${REPO_DIR}/accuracy_runs}"
 PORT="${PORT:-8000}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-Qwen3-VL-Embedding-2B}"
+OMP_NUM_THREADS="${OMP_NUM_THREADS:-16}"
 
 usage() {
   cat <<'EOF'
@@ -18,7 +19,7 @@ Usage:
 
 Optional environment variables:
   MODEL_PATH, IMAGE_PATH, RUN_DIR, RUNS_DIR, PORT, SERVED_MODEL_NAME,
-  T4_EXECUTION_MODE, CUDAGRAPH_CAPTURE_SIZES_JSON
+  OMP_NUM_THREADS, T4_EXECUTION_MODE, CUDAGRAPH_CAPTURE_SIZES_JSON
 
 The transformers stage stops vLLM, creates a timestamped RUN_DIR, and writes
 the reference vectors. The vllm stage reuses accuracy_runs/latest, starts the
@@ -27,6 +28,10 @@ EOF
 }
 
 require_common_inputs() {
+  if [[ ! "${OMP_NUM_THREADS}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ERROR: OMP_NUM_THREADS must be a positive integer." >&2
+    exit 1
+  fi
   if [[ -z "${CONDA_PREFIX:-}" ]]; then
     echo "ERROR: activate vllm-t4-cu118-torch271 first." >&2
     exit 1
@@ -78,6 +83,7 @@ stop_vllm() {
 
 prepare_runtime_environment() {
   unset CUDA_HOME
+  export OMP_NUM_THREADS
   export LD_LIBRARY_PATH="/usr/local/cuda-11.8/compat:${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
 }
 
@@ -93,6 +99,7 @@ run_transformers() {
   echo "RUN_DIR=${run_dir}"
   echo "MODEL_PATH=${MODEL_PATH}"
   echo "IMAGE_PATH=${IMAGE_PATH}"
+  echo "OMP_NUM_THREADS=${OMP_NUM_THREADS}"
 
   stop_vllm
   prepare_runtime_environment
@@ -147,6 +154,7 @@ run_vllm_and_compare() {
   exec > >(tee "${run_dir}/vllm_stage.log") 2>&1
   echo "RUN_DIR=${run_dir}"
   echo "T4_EXECUTION_MODE=${T4_EXECUTION_MODE:-eager}"
+  echo "OMP_NUM_THREADS=${OMP_NUM_THREADS}"
   prepare_runtime_environment
 
   IMAGE_LIMIT=1 \
@@ -167,14 +175,65 @@ run_vllm_and_compare() {
     --output "${run_dir}/precision_vllm.json" \
     2>&1 | tee "${run_dir}/precision_vllm.log"
 
-  python "${REPO_DIR}/compare_vllm_transformers.py" compare \
-    --reference "${run_dir}/precision_transformers.json" \
-    --candidate "${run_dir}/precision_vllm.json" \
-    --report "${run_dir}/precision_report.json" \
-    2>&1 | tee "${run_dir}/precision_compare.log"
+  local compare_status=0
+  if python "${REPO_DIR}/compare_vllm_transformers.py" compare \
+      --reference "${run_dir}/precision_transformers.json" \
+      --candidate "${run_dir}/precision_vllm.json" \
+      --report "${run_dir}/precision_report.json" \
+      2>&1 | tee "${run_dir}/precision_compare.log"; then
+    compare_status=0
+  else
+    compare_status=$?
+  fi
 
-  echo "ACCURACY PASS: ${run_dir}/precision_report.json"
   find "${run_dir}" -maxdepth 1 -type f -printf '%f\n' | sort
+
+  python - "${run_dir}/precision_report.json" \
+    "${T4_EXECUTION_MODE:-eager}" <<'PY'
+import json
+import sys
+
+report_path, execution_mode = sys.argv[1:]
+with open(report_path, encoding="utf-8") as handle:
+    report = json.load(handle)
+
+summary = report["summary"]
+thresholds = report["thresholds"]
+passed = bool(report["passed"])
+
+print()
+print("=" * 72)
+print("最终精度结论：" + ("PASS" if passed else "FAIL"))
+print(f"执行模式：{execution_mode}")
+print(
+    "最低同输入 cosine："
+    f"{summary['min_same_input_cosine']:.10f} "
+    f"(要求 >= {thresholds['min_cosine']:.10f})"
+)
+print(
+    "Pairwise similarity MAE："
+    f"{summary['pairwise_similarity_mae']:.10f} "
+    f"(要求 <= {thresholds['max_similarity_mae']:.10f})"
+)
+print(
+    "检索 Top-1 一致率："
+    f"{summary['retrieval_top1_agreement'] * 100:.2f}%"
+)
+if passed:
+    print(
+        "结论：vLLM 与 Transformers 精度对齐，当前执行模式未发现可观测的精度回归，"
+        "可以继续稳定性和性能验证。"
+    )
+else:
+    failures = "; ".join(report.get("failures") or ["unknown failure"])
+    print(f"结论：精度验收未通过，不应进入性能验证；失败原因：{failures}")
+print(f"报告：{report_path}")
+print("=" * 72)
+PY
+
+  if ((compare_status != 0)); then
+    return "${compare_status}"
+  fi
 }
 
 case "${STAGE}" in
