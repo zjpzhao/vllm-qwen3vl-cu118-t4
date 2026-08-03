@@ -539,10 +539,11 @@ CUDA Graph 外运行。默认 capture sizes 是
 
 该入口尚需在真实 T4 上重新完成启动和精度验收。日志应显示
 `cudagraph_mode: 1`、`use_inductor: false` 和 graph capture 完成；出现 OOM、capture
-错误或精度回归时立即回退。使用已有 Transformers reference 验证 CUDA Graph 模式：
+错误或精度回归时立即回退。单命令依次运行 Transformers 与 vLLM 并验证 CUDA
+Graph 模式：
 
 ```bash
-T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh vllm
+T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh
 ```
 
 回退命令：

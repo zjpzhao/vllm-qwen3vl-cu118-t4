@@ -127,7 +127,7 @@ CUDAGRAPH_CAPTURE_SIZES_JSON='[64,128,256,512,1024]' \
 随后必须用相同模式重新运行精度检查：
 
 ```bash
-T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh vllm
+T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh
 ```
 
 精度脚本在详细 JSON 和产物列表之后还会打印最终 PASS/FAIL 结论、执行模式、三项
@@ -331,14 +331,14 @@ Top-1 一致率。`compare_vllm_transformers.py` 已固定两边均为 FP16、�
 T4 只有 16 GiB，建议先停止服务，生成 Transformers 基准；再启动 vLLM 视觉服务
 生成候选向量并比较：
 
-推荐使用两阶段包装脚本。首次执行只跑 Transformers，确认通过后再启动视觉
-vLLM 并比较；脚本自动复用 `accuracy_runs/latest` 指向的结果目录：
+推荐使用单命令包装脚本。一次执行会先停止已有服务并运行 Transformers，再启动
+视觉 vLLM、生成候选、自动比较、打印最终结论并关闭测试服务；所有产物写入同一个
+时间戳目录，`accuracy_runs/latest` 指向该目录：
 
 ```bash
 conda activate vllm-t4-cu118-torch271
 cd /root/vllm-qwen3vl-cu118-t4
-./run_accuracy_check.sh transformers
-./run_accuracy_check.sh vllm
+./run_accuracy_check.sh
 ```
 
 如模型或图片路径不同，可分别设置 `MODEL_PATH` 和 `IMAGE_PATH`。下面是脚本内部

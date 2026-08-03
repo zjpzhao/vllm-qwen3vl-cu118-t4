@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-STAGE="${1:-}"
+STAGE="${1:-all}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_DIR:-${SCRIPT_DIR}}"
 MODEL_PATH="${MODEL_PATH:-/root/Qwen3-VL-Embedding-2B}"
@@ -17,16 +17,15 @@ ACCURACY_PID_FILE=""
 usage() {
   cat <<'EOF'
 Usage:
-  ./run_accuracy_check.sh transformers
-  ./run_accuracy_check.sh vllm
+  ./run_accuracy_check.sh
 
 Optional environment variables:
   MODEL_PATH, IMAGE_PATH, RUN_DIR, RUNS_DIR, PORT, SERVED_MODEL_NAME,
   OMP_NUM_THREADS, T4_EXECUTION_MODE, CUDAGRAPH_CAPTURE_SIZES_JSON
 
-The transformers stage stops vLLM, creates a timestamped RUN_DIR, and writes
-the reference vectors. The vllm stage reuses accuracy_runs/latest, starts the
-visual service, writes candidate vectors, and produces the comparison report.
+One invocation stops any existing vLLM service, writes the Transformers
+reference, starts vLLM, writes candidate vectors, compares both outputs, prints
+the final verdict, and then stops all vLLM processes.
 EOF
 }
 
@@ -64,24 +63,11 @@ listener_pid() {
 }
 
 stop_vllm() {
-  local pid
-  pid="$(listener_pid)"
-  if [[ -z "${pid}" ]]; then
-    echo "No listener on port ${PORT}."
-    return
+  echo "Ensuring no vLLM process remains before Transformers starts..."
+  cleanup_accuracy_vllm
+  if ((ACCURACY_CLEANUP_STATUS != 0)); then
+    exit 1
   fi
-
-  echo "Stopping PID ${pid} on port ${PORT}..."
-  kill -TERM "${pid}"
-  for _ in $(seq 1 60); do
-    if ! kill -0 "${pid}" 2>/dev/null; then
-      echo "Stopped PID ${pid}."
-      return
-    fi
-    sleep 1
-  done
-  echo "ERROR: PID ${pid} did not stop after 60 seconds." >&2
-  exit 1
 }
 
 cleanup_accuracy_vllm() {
@@ -160,8 +146,7 @@ run_transformers() {
     2>&1 | tee "${run_dir}/precision_transformers.log"
 
   test -s "${run_dir}/precision_transformers.json"
-  echo "TRANSFORMERS PASS: ${run_dir}/precision_transformers.json"
-  echo "Next command: ./run_accuracy_check.sh vllm"
+  echo "TRANSFORMERS REFERENCE PASS: ${run_dir}/precision_transformers.json"
 }
 
 resolve_run_dir() {
@@ -297,7 +282,22 @@ PY
   fi
 }
 
+run_all() {
+  local run_dir
+  run_dir="${RUN_DIR:-${RUNS_DIR}/$(date +%Y%m%d_%H%M%S)}"
+
+  echo "Running complete accuracy workflow in one command."
+  echo "Stage 1/2: Transformers reference"
+  RUN_DIR="${run_dir}" "${SCRIPT_DIR}/run_accuracy_check.sh" transformers
+
+  echo "Stage 2/2: vLLM candidate, comparison, final verdict, and cleanup"
+  RUN_DIR="${run_dir}" "${SCRIPT_DIR}/run_accuracy_check.sh" vllm
+}
+
 case "${STAGE}" in
+  all)
+    run_all
+    ;;
   transformers)
     run_transformers
     ;;

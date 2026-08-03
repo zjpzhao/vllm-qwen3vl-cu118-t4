@@ -30,8 +30,10 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
 - IPv6 重启脚本新增可回退的 `T4_EXECUTION_MODE=cudagraph` 实验模式：使用
   vLLM level 3 做 piecewise Dynamo 分段和 CUDA Graph capture，但显式关闭
   TorchInductor，避免重新触发 SM75 Triton lowering；默认仍为已验证的 eager/O0。
-- 服务和两阶段精度脚本默认导出 `OMP_NUM_THREADS=16`；精度脚本在所有详细输出
+- 服务和单命令串行精度脚本默认导出 `OMP_NUM_THREADS=16`；精度脚本在所有详细输出
   之后打印明确的最终 PASS/FAIL 结论和关键阈值对照，失败时仍保留非零退出码。
+- `run_accuracy_check.sh` 不再要求手动分阶段：一次调用依次运行 Transformers、
+  vLLM、结果比较、最终结论和服务清理，所有产物保存在同一时间戳目录。
 - 精度脚本的 vLLM 阶段新增强制退出清理：正常、失败和信号退出都会先 TERM，等待
   3 秒后 KILL 残留 API Server、EngineCore 与 vLLM spawn 进程，并确认端口释放。
 - 修复 chat embedding 与官方处理器的 LAST pooling 对齐：所有标准请求显式设置

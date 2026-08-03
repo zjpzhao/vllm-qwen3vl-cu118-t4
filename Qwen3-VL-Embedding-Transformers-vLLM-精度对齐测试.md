@@ -61,7 +61,7 @@ LAST pooling、L2 normalize、图片字节和视觉 resize 上下限，覆盖：
 
 相关脚本：
 
-- `run_accuracy_check.sh`：分阶段运行 Transformers、vLLM 和最终比较；
+- `run_accuracy_check.sh`：一次调用串行运行 Transformers、vLLM、最终比较和清理；
 - `compare_vllm_transformers.py`：生成两套向量并计算精度指标；
 - `run_accuracy_diagnosis.sh`：首次对照失败后的自动定位入口；
 - `diagnose_accuracy_mismatch.py`：MRoPE 对照和 Transformers hidden-state 扫描；
@@ -108,17 +108,12 @@ curl -fL --retry 10 \
   'https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg'
 ```
 
-先运行官方 Transformers。该阶段会停止 8000 端口上的 vLLM，并建立新的时间戳
-目录：
+用一个命令完成全部流程：脚本先停止 8000 端口上的已有 vLLM，建立新的时间戳
+目录并运行官方 Transformers；随后自动启动允许图片输入的 vLLM、生成候选向量、
+完成比较、打印最终结论并退出测试服务：
 
 ```bash
-./run_accuracy_check.sh transformers
-```
-
-再启动允许图片输入的 vLLM，生成候选向量并自动比较：
-
-```bash
-./run_accuracy_check.sh vllm
+./run_accuracy_check.sh
 ```
 
 两个阶段默认设置 `OMP_NUM_THREADS=16`，可在命令前用同名环境变量覆盖。vLLM
@@ -236,10 +231,10 @@ Transformers 的真实 LAST token 是随后 index 36/31 的 `<|endoftext|>`，to
 
 ## 8. 修复后的最终结果
 
-修复后复用同一 Transformers 基准，只重新执行 vLLM 阶段：
+修复后重新执行单命令完整流程：
 
 ```bash
-./run_accuracy_check.sh vllm
+./run_accuracy_check.sh
 ```
 
 逐用例结果：
