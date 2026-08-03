@@ -4,6 +4,11 @@
 
 该构建只保证 FP16、`--kv-cache-dtype auto` 和 XFormers attention；不支持 FP8/DeepGEMM、DeepSeek FP8 MLA、FA3、Ray CGraph/Pipeline Parallel，以及编译时跳过的 Hopper/Blackwell 等高架构内核。它不是通用 CUDA wheel。
 
+详细资料：
+
+- [Transformers/vLLM 精度对齐测试、问题定位与最终结果](Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md)
+- [源码编译、回移和内核裁剪说明](vLLM%200.11.0%20在%20T4%20CUDA%2011.8%20上的源码编译与内核裁剪.md)
+
 ## 目标机安装
 
 目标机不需要 nvcc 或完整 CUDA Toolkit。进入完整发布包目录后执行：
@@ -23,7 +28,7 @@ python verify_qwen3vl_embedding.py \
   --model /root/Qwen3-VL-Embedding-2B
 ```
 
-如需同时验证视觉输入，追加 `--image /path/to/test.jpg`。验证脚本要求输出维度为 2048、L2 norm 约为 1，并分别覆盖纯文本和可选图片 embedding。服务默认允许每个请求携带 1 张图片，视频仍关闭。
+如需同时验证视觉输入，追加 `--image /path/to/test.jpg`。验证脚本要求输出维度为 2048、L2 norm 约为 1，并分别覆盖纯文本和可选图片 embedding。服务默认允许每个请求携带 1 张图片，视频关闭；全模态启动命令见下一节。
 
 ## 启动 Embedding 后端
 
@@ -82,6 +87,17 @@ chmod +x restart_vllm_server_ipv6.sh
 上述完整参数在后台启动服务；PID 写入 `vllm_server.pid`，输出写入
 `vllm_server.log`。如模型或端口不同，可在命令前设置 `MODEL_PATH`、
 `SERVED_MODEL_NAME` 或 `PORT`。
+
+如需同时开放文本、图片和视频，保持同一 IPv6 监听配置并覆盖多模态限额：
+
+```bash
+conda activate vllm-t4-cu118-torch271
+cd /root/vllm-qwen3vl-cu118-t4
+IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
+```
+
+文本不需要单独的限额开关。上述命令允许每个请求最多 1 张图片和 1 个视频；本项目
+当前精度报告已覆盖文本、图片和图片加文本，尚未把视频纳入固定精度用例。
 
 启动日志必须包含 `Using XFormers backend on V1 engine` 和
 `Supported_tasks: ['encode', 'embed']`。T4 不支持 FA2，因此
@@ -300,6 +316,12 @@ find "$RUN_DIR" -maxdepth 1 -type f -printf '%f\n' | sort
 本交付环境并不完全相同，因此本脚本明确使用目标机已有的 Transformers 4.57.3、
 PyTorch 2.7.1+cu118 和 FP16，以隔离 dtype 与运行环境差异。
 
+真实 T4 最终报告已通过：最小同输入 cosine `0.9998480503`、平均 cosine
+`0.9999490930`、pairwise similarity MAE `0.0007551337`、最大相似度误差
+`0.0027555053`，检索 Top-1 100% 一致，`failures=[]`。首次失败、内核排查、
+EOS/LAST pooling 根因和逐用例结果见
+[独立精度测试文档](Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md)。
+
 `install_target.sh` 会自动调用 `apply_t4_xformers_hotfix.py`，将 embedding
 纯 prefill 改为连续 Q/K/V 的 xFormers CUTLASS attention，从而避开 SM75 上
 无法编译的 Triton Unified/Flex Attention。已经完成旧版安装时可单独执行：
@@ -374,8 +396,10 @@ SHA256SUMS
 git add README.md environment.yml constraints-t4-cu118.txt \
   install_target.sh verify_target.py verify_qwen3vl_embedding.py \
   compare_vllm_transformers.py run_accuracy_check.sh \
-  restart_vllm_server_ipv6.sh \
+  diagnose_accuracy_mismatch.py run_accuracy_diagnosis.sh \
+  apply_t4_xformers_hotfix.py restart_vllm_server_ipv6.sh \
   requirements patches logs \
+  'Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md' \
   'vLLM 0.11.0 在 T4 CUDA 11.8 上的源码编译与内核裁剪.md' \
   .gitignore
 git status --short

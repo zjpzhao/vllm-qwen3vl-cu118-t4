@@ -24,6 +24,14 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
 - IPv6 重启脚本默认开启 Qwen3-VL 视觉分支（每请求 1 张图片，视频关闭），并新增
   Transformers/vLLM 两阶段精度比较脚本，覆盖逐向量误差、相似度矩阵与检索
   Top-1 一致性。
+- 修复 chat embedding 与官方处理器的 LAST pooling 对齐：所有标准请求显式设置
+  `add_special_tokens=true`，确保末尾 `<|endoftext|>` 被保留并参与 pooling。
+- 真实 T4 的 6 用例文本/图片精度报告已通过：最小同输入 cosine
+  `0.9998480503`，pairwise similarity MAE `0.0007551337`，Top-1 100% 一致；
+  完整复现与定位过程见 `Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md`。
+- 如需开放文本、图片和视频，可用
+  `IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh` 在 IPv6 `[::]`
+  上启动；视频入口已开放，但本轮固定精度报告未覆盖视频样本。
 
 ## Release assets
 
@@ -44,7 +52,8 @@ Release 还会单独附带 vLLM 与 XFormers 两个核心 wheel，方便已有�
 - 目标系统：`x86_64`、CPython 3.10、glibc `>=2.28`、NVIDIA T4。
 - 禁止把 CUDA toolkit `lib/stubs` 或 `/usr/local/cuda-12.9/compat` 加入
   `LD_LIBRARY_PATH`。
-- R450.191.01 已配合 `cuda-compat-11-8` 在当前真实 T4 通过文本 embedding
-  验证；这是遗留环境实测结果，不替代升级到仍受支持驱动分支的生产建议。
+- R450.191.01 已配合 `cuda-compat-11-8` 在当前真实 T4 通过文本、
+  纯图片和图片加文本 embedding 验证；这是遗留环境实测结果，不替代
+  升级到仍受支持驱动分支的生产建议。
 - 不支持 FP8/DeepGEMM、DeepSeek FP8 MLA、FA3、Ray CGraph/流水并行及本文档
   列出的高架构内核。

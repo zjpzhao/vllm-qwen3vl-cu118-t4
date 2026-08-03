@@ -28,8 +28,11 @@
   回移到 0.11.0，使 `Qwen3VLForConditionalGeneration` 可转换为
   `Qwen3VLForEmbedding`，并清理生成 head、过滤 `lm_head.*` 权重。
 - **启用视觉 embedding 与精度对照：** 服务默认允许每请求 1 张图片（视频关闭），
-  保留视觉编码器；新增同输入 Transformers/vLLM 两阶段对照，检查逐向量误差、
-  相似度矩阵和检索 Top-1 一致性。
+  也可通过环境变量开放视频；保留视觉编码器并新增同输入 Transformers/vLLM
+  两阶段对照，检查逐向量误差、相似度矩阵和检索 Top-1 一致性。
+- **修复 LAST pooling 输入对齐：** chat embedding 请求显式启用
+  `add_special_tokens`，与官方处理器一致地保留末尾 `<|endoftext|>`，避免少一个
+  token 后错误池化前一个换行 token。
 - **绕开 T4 Triton Attention 阻断：** 增加可恢复的
   `apply_t4_xformers_hotfix.py`，对纯 prefill embedding 使用预编译的 xFormers
   CUTLASS contiguous attention，避开 SM75 上失败的 Triton Unified/Flex
@@ -40,15 +43,19 @@
 
 最终交付只保证 FP16、KV Cache dtype `auto`、XFormers attention 和
 pooling/embedding 纯 prefill，不支持上述裁剪内核、FP8/DeepGEMM、文本生成
-decode、prefix caching 或 chunked prefill。文本 Embedding API 已在真实 T4、
-R450.191.01、glibc 2.28 与 `cuda-compat-11-8` 环境验证通过；视觉输入和
-Transformers 对照需按第 6.6 节在目标机执行并保存报告。
+decode、prefix caching 或 chunked prefill。文本与图片 Embedding API 已在真实
+T4、R450.191.01、glibc 2.28 与 `cuda-compat-11-8` 环境完成 Transformers
+对照并通过；视频入口可启用，但尚未纳入本轮固定精度报告。
 
 ## 结论
 
 vLLM 0.11.0 的部分 DeepGEMM BF16/FP8 模板依赖 CUDA 12 才满足的接口、编译宏组合和更高 GPU 架构能力，无法在 CUDA 11.8 + SM75 下原样编译。本项目将源码调整为一个**仅面向 NVIDIA T4（SM75）、glibc 2.28、以 FP16 为受支持运行边界的 CUDA 11.8 wheel**：恢复 CUDA 11 的 half/BF16 编译能力，裁剪不兼容的 DeepGEMM 实现，为 CUDA 12-only MoE 算子保留 ABI stub，修复 CUDA driver 链接，并把 vLLM 后续版本的通用多模态 embedding/pooling 适配方式回移到 0.11.0，使 `Qwen3VLForConditionalGeneration` 能转换为 `Qwen3VLForEmbedding`。
 
 当前已使用稳定版 PyTorch 2.7.1+cu118 完成 vLLM 与 XFormers wheel 构建、安装、原生扩展导入、相对 RUNPATH、`auditwheel show` 和 Qwen3-VL pooling 路由回归测试，并已在真实 T4、R450.191.01、glibc 2.28 与 `cuda-compat-11-8` 环境完成离线推理和 OpenAI Embedding API 端到端验证。
+
+完整的 Transformers/vLLM 两阶段测试、首次差异、XFormers/MRoPE 排查、
+EOS/LAST pooling 根因和最终逐用例结果见
+[`Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md`](Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md)。
 
 ## 1. 目标与边界
 
@@ -493,6 +500,14 @@ chmod +x restart_vllm_server_ipv6.sh
 ./restart_vllm_server_ipv6.sh
 ```
 
+如需同时开放文本、图片和视频，使用同一 IPv6 脚本覆盖两个多模态限额：
+
+```bash
+IMAGE_LIMIT=1 VIDEO_LIMIT=1 ./restart_vllm_server_ipv6.sh
+```
+
+文本模态无需单独开关；上述配置允许每个请求最多 1 张图片和 1 个视频。
+
 脚本仅终止当前占用 8000 端口的进程，等待其正常退出后以本文完整参数后台启动；
 PID 和日志分别保存为 `vllm_server.pid`、`vllm_server.log`。
 
@@ -533,7 +548,8 @@ env \
 
 当前命令默认允许每个请求携带 1 张图片并关闭视频；无图片请求仍只执行文本路径。
 视觉请求使用 chat embedding 的 `image_url` 内容块，建议传 data URI，避免服务端
-无法访问客户端本地路径。图片链路通过前不得把文本验收结论扩大为完整多模态验收。
+无法访问客户端本地路径。本轮已验证文本、纯图片和图片加文本；视频入口可开放，
+但生产接入前仍需用固定视频样本建立独立的精度和显存基线。
 
 精度验证采用两阶段执行，避免 Transformers 与 vLLM 两份 2B 模型同时占用 T4：
 
@@ -594,7 +610,11 @@ find "$RUN_DIR" -maxdepth 1 -type f -printf '%f\n' | sort
 脚本强制对齐 FP16、instruction、chat template、LAST pooling、L2 normalize 和
 图片字节，默认要求相同输入最小余弦不低于 0.995、pairwise similarity MAE 不高于
 0.02、检索 Top-1 完全一致。每次运行的向量 JSON、比较报告、推理日志和 vLLM
-服务日志统一保存在 `accuracy_runs/<时间戳>/`，该目录不会提交到 Git。阈值用于工程回归，不替代在业务标注集上计算 Recall@K、
+服务日志统一保存在 `accuracy_runs/<时间戳>/`，该目录不会提交到 Git。
+本次真实 T4 结果为：最小同输入 cosine `0.9998480503`、pairwise similarity
+MAE `0.0007551337`、Top-1 100% 一致，`failures=[]`。完整数据与首次失败定位见
+独立精度文档。
+阈值用于工程回归，不替代在业务标注集上计算 Recall@K、
 MRR/nDCG；首次结果应保存为后续固定基线。文本链路通过后，可逐步提高
 `--max-num-seqs`、上下文长度和显存利用率；prefix caching 与 chunked prefill
 在此热补丁中仍不能启用。
