@@ -521,6 +521,36 @@ MAX_NUM_SEQS=8 MAX_NUM_BATCHED_TOKENS=4096 \
 PID 和日志分别保存为 `vllm_server.pid`、`logs/vllm_server.log`。日志目录由脚本
 自动创建，也可通过 `LOG_DIR` 或 `LOG_FILE` 覆盖。
 
+默认 `T4_EXECUTION_MODE=eager` 保持 `--enforce-eager -O0`。可按下一阶段实验
+单独启用 piecewise CUDA Graph：
+
+```bash
+T4_EXECUTION_MODE=cudagraph ./restart_vllm_server_ipv6.sh
+```
+
+vLLM 0.11.0 的 pooling 模型不使用 full CUDA Graph，piecewise CUDA Graph 又要求
+level 3 分段，因此该模式使用 `level=3`、`cudagraph_mode=PIECEWISE`，同时显式设置
+`use_inductor=false`。这会用 Dynamo 划分 attention 边界并捕获非 attention 子图，
+但不会让 TorchInductor 生成新的 Triton kernel；XFormers CUTLASS attention 仍在
+CUDA Graph 外运行。默认 capture sizes 是
+`[32,64,128,256,512,1024,2048]`，更大的 batch 自动走 eager。可以用
+`CUDAGRAPH_CAPTURE_SIZES_JSON` 覆盖，但所有值必须为正整数且不超过
+`MAX_NUM_BATCHED_TOKENS`。
+
+该入口尚需在真实 T4 上重新完成启动和精度验收。日志应显示
+`cudagraph_mode: 1`、`use_inductor: false` 和 graph capture 完成；出现 OOM、capture
+错误或精度回归时立即回退。使用已有 Transformers reference 验证 CUDA Graph 模式：
+
+```bash
+T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh vllm
+```
+
+回退命令：
+
+```bash
+T4_EXECUTION_MODE=eager ./restart_vllm_server_ipv6.sh
+```
+
 日志必须出现 `Using XFormers backend on V1 engine` 和支持任务
 `['encode', 'embed']`。T4 上关于 FA2 需要 compute capability >= 8 的信息是
 后端探测结果，只要随后明确使用 XFormers 就不影响运行。

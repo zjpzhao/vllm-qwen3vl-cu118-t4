@@ -91,11 +91,46 @@ chmod +x restart_vllm_server_ipv6.sh
 `logs/vllm_server.log`。脚本会自动创建日志目录；可用 `LOG_DIR` 修改默认日志
 目录，或用 `LOG_FILE` 指定完整日志路径。如模型或端口不同，可在命令前设置 `MODEL_PATH`、
 `SERVED_MODEL_NAME`、`PORT`、`MAX_MODEL_LEN`、`MAX_NUM_SEQS`、
-`MAX_NUM_BATCHED_TOKENS`。脚本默认允许每个调度 iteration
+`MAX_NUM_BATCHED_TOKENS`、`T4_EXECUTION_MODE` 和
+`CUDAGRAPH_CAPTURE_SIZES_JSON`。脚本默认允许每个调度 iteration
 合批 8 条序列，并把总 token budget 设为 4096；旧版的
 `--max-num-seqs 1` 会完全禁止请求级合批，客户端增加并发只会形成等待队列。
 高吞吐启动默认关闭 Uvicorn 的逐请求 access log，避免日志写盘成为前端瓶颈；
 vLLM 的周期统计和 `/metrics` 仍保留。
+
+### T4 CUDA Graph 实验模式
+
+默认 `T4_EXECUTION_MODE=eager` 继续使用已经完成精度验证的
+`--enforce-eager -O0`。下一阶段可单独开启 piecewise CUDA Graph：
+
+```bash
+T4_EXECUTION_MODE=cudagraph ./restart_vllm_server_ipv6.sh
+```
+
+该模式使用 vLLM 0.11.0 的 level 3 做 Dynamo 分段，但显式设置
+`use_inductor=false`，因此不会让 TorchInductor 为 SM75 生成此前失败的 Triton
+FP16 kernel；`vllm.unified_attention_with_output` 仍是分段边界，XFormers CUTLASS
+attention 在 CUDA Graph 外执行，非 attention 子图使用 piecewise CUDA Graph。
+pooling 模型不使用 full CUDA Graph。默认捕获大小为
+`[32,64,128,256,512,1024,2048]`，超过最大捕获大小的 batch 自动回退到 eager；
+需要覆盖时传入不带空格的 JSON，并确保每个值不超过 token budget：
+
+```bash
+T4_EXECUTION_MODE=cudagraph \
+CUDAGRAPH_CAPTURE_SIZES_JSON='[64,128,256,512,1024]' \
+./restart_vllm_server_ipv6.sh
+```
+
+这是可回退的实验入口，不代表已获得性能提升。启动日志应显示
+`cudagraph_mode: 1`、`use_inductor: false`、CUDA Graph capture 完成且服务健康；
+随后必须用相同模式重新运行精度检查：
+
+```bash
+T4_EXECUTION_MODE=cudagraph ./run_accuracy_check.sh vllm
+```
+
+若捕获失败、OOM 或精度不通过，执行
+`T4_EXECUTION_MODE=eager ./restart_vllm_server_ipv6.sh` 即可回到已验证路径。
 
 如需同时开放文本、图片和视频，保持同一 IPv6 监听配置并覆盖多模态限额：
 

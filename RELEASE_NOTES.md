@@ -27,6 +27,9 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
 - IPv6 重启脚本默认开启 Qwen3-VL 视觉分支（每请求 1 张图片，视频关闭），并新增
   Transformers/vLLM 两阶段精度比较脚本，覆盖逐向量误差、相似度矩阵与检索
   Top-1 一致性。
+- IPv6 重启脚本新增可回退的 `T4_EXECUTION_MODE=cudagraph` 实验模式：使用
+  vLLM level 3 做 piecewise Dynamo 分段和 CUDA Graph capture，但显式关闭
+  TorchInductor，避免重新触发 SM75 Triton lowering；默认仍为已验证的 eager/O0。
 - 修复 chat embedding 与官方处理器的 LAST pooling 对齐：所有标准请求显式设置
   `add_special_tokens=true`，确保末尾 `<|endoftext|>` 被保留并参与 pooling。
 - 真实 T4 的 6 用例文本/图片精度报告已通过：最小同输入 cosine

@@ -17,7 +17,8 @@ Usage:
   ./run_accuracy_check.sh vllm
 
 Optional environment variables:
-  MODEL_PATH, IMAGE_PATH, RUN_DIR, RUNS_DIR, PORT, SERVED_MODEL_NAME
+  MODEL_PATH, IMAGE_PATH, RUN_DIR, RUNS_DIR, PORT, SERVED_MODEL_NAME,
+  T4_EXECUTION_MODE, CUDAGRAPH_CAPTURE_SIZES_JSON
 
 The transformers stage stops vLLM, creates a timestamped RUN_DIR, and writes
 the reference vectors. The vllm stage reuses accuracy_runs/latest, starts the
@@ -145,6 +146,7 @@ run_vllm_and_compare() {
 
   exec > >(tee "${run_dir}/vllm_stage.log") 2>&1
   echo "RUN_DIR=${run_dir}"
+  echo "T4_EXECUTION_MODE=${T4_EXECUTION_MODE:-eager}"
   prepare_runtime_environment
 
   IMAGE_LIMIT=1 \
