@@ -389,7 +389,11 @@ python verify_qwen3vl_embedding.py \
 kernel；两者在 Torch 2.7.1 配套 Triton 的 `ConvertTritonGPUToLLVM` 阶段均会报
 `Unsupported conversion from f16 to f16`。补丁仅针对 Qwen3-VL
 pooling/embedding 的纯 prefill，把当前连续 Q/K/V 交给预编译的 xFormers
-CUTLASS kernel，并要求关闭 prefix caching 和 chunked prefill。回滚命令为：
+CUTLASS kernel，并要求关闭 prefix caching 和 chunked prefill。优化版在 CPU
+metadata builder 中一次完成长度校验和 block-diagonal bias 构造，各语言层复用
+同一 bias；确认不存在 decode 和历史 KV 后，跳过后续不会读取的 paged KV cache
+写入。旧版热补丁会由 `apply_t4_xformers_hotfix.py` 使用原始备份自动升级，无需
+重编 wheel。回滚命令为：
 
 ```bash
 python apply_t4_xformers_hotfix.py --restore

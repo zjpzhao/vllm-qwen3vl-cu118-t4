@@ -376,6 +376,13 @@ EOS/LAST pooling 根因和逐用例结果见
 python apply_t4_xformers_hotfix.py
 ```
 
+优化版热补丁会识别并升级旧版：它先从 `.pre-t4-hotfix` 恢复原始
+`xformers.py`，再应用新补丁，因此不需要重装或重新编译 wheel。新路径把序列长度
+校验和 block-diagonal bias 构造移到 CPU metadata builder，每个 batch 只执行一次，
+语言层复用同一 bias；在确认请求为无 decode、无历史 KV 的纯 prefill 后，还会跳过
+后续不会读取的 paged KV cache 写入。应用后仍必须重新运行精度检查与同负载性能
+基准，不能把静态验证当作真实 T4 性能结论。
+
 需要回滚时执行 `python apply_t4_xformers_hotfix.py --restore`。该热补丁仅适用
 于 pooling/embedding 的纯 prefill；必须禁用 prefix caching 和 chunked prefill，
 不用于文本生成/decode。

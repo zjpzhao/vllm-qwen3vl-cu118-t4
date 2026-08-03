@@ -1,17 +1,163 @@
 --- a/vllm/v1/attention/backends/xformers.py
 +++ b/vllm/v1/attention/backends/xformers.py
-@@ -4,0 +5 @@
+@@ -2,6 +2,7 @@
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+ """Attention layer with XFormersAttention."""
+
 +import os
-@@ -21,0 +23 @@ try:
+ from dataclasses import dataclass
+ from typing import TYPE_CHECKING, Optional
+
+@@ -19,8 +20,10 @@
+
+ try:
+     from xformers import ops as xops
 +    from xformers.ops.fmha import cutlass as xformers_cutlass
-@@ -23 +25,2 @@ try:
+     from xformers.ops.fmha.attn_bias import (
 -        AttentionBias, PagedBlockDiagonalCausalWithOffsetPaddedKeysMask)
 +        AttentionBias, BlockDiagonalCausalMask,
 +        PagedBlockDiagonalCausalWithOffsetPaddedKeysMask)
-@@ -300,0 +304,2 @@ class XFormersAttentionImpl(AttentionImpl):
+
+     XFORMERS_AVAILABLE = True
+ except ImportError:
+@@ -138,6 +141,8 @@
+
+     # Biases for different attention types.
+     attn_bias: Optional["AttentionBias"] = None
++    t4_prefill_attn_bias: Optional["AttentionBias"] = None
++    t4_skip_kv_cache: bool = False
+
+     # Self-attention prefill/decode metadata cache
+     _cached_prefill_metadata: Optional["XFormersAttentionMetadata"] = None
+@@ -148,6 +153,12 @@
+         if self.num_prefills == 0:
+             return None
+
++        # The optimized T4 path is guaranteed to contain only prefills, so
++        # the full metadata already is the prefill metadata. Returning it
++        # directly avoids GPU .item() synchronizations in the generic split.
++        if self.t4_skip_kv_cache:
++            return self
++
+         if self._cached_prefill_metadata is not None:
+             # Recover cached prefill-phase attention
+             # metadata structure
+@@ -165,6 +176,8 @@
+             seq_lens=kv_seqlens,
+             block_table=self.block_table[self.num_decodes:],
+             slot_mapping=self.slot_mapping[self.num_decode_tokens:],
++            t4_prefill_attn_bias=self.t4_prefill_attn_bias,
++            t4_skip_kv_cache=self.t4_skip_kv_cache,
+         )
+         return self._cached_prefill_metadata
+
+@@ -213,6 +226,8 @@
+         self.block_size = kv_cache_spec.block_size
+         self._num_decodes = 0
+         self._num_decode_tokens = 0
 +        self.use_t4_contiguous_prefill = (
 +            os.getenv("VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL", "0") == "1")
-@@ -380,21 +385,69 @@ class XFormersAttentionImpl(AttentionImpl):
+
+     def reorder_batch(self, input_batch: "InputBatch",
+                       scheduler_output: "SchedulerOutput") -> bool:
+@@ -234,16 +249,21 @@
+
+         num_actual_tokens = common_attn_metadata.num_actual_tokens
+         q_start_loc = common_attn_metadata.query_start_loc
+-        q_seqlens = torch.diff(q_start_loc)
+         max_query_len = common_attn_metadata.max_query_len
+         kv_seqlens = common_attn_metadata.seq_lens
+         max_seq_len = common_attn_metadata.max_seq_len
+         block_table = common_attn_metadata.block_table_tensor
+         slot_mapping = common_attn_metadata.slot_mapping
+
++        if self.use_t4_contiguous_prefill and num_decodes > 0:
++            raise RuntimeError(
++                "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL only supports "
++                "pure-prefill pooling/embedding requests")
++
+         bias = None
+         if num_decodes > 0:
+             # Construct the decoder bias.
++            q_seqlens = torch.diff(q_start_loc)
+             decode_q_seqlens = q_seqlens[:num_decodes]
+             decode_kv_seqlens = kv_seqlens[:num_decodes]
+             bias = (
+@@ -255,6 +275,25 @@
+                     device=block_table.device,
+                 ))
+
++        t4_prefill_attn_bias = None
++        t4_skip_kv_cache = False
++        if self.use_t4_contiguous_prefill and num_prefills > 0:
++            q_start_loc_cpu = (
++                common_attn_metadata.query_start_loc_cpu[num_decodes:])
++            q_seqlens_cpu = torch.diff(q_start_loc_cpu)
++            kv_seqlens_cpu = (
++                common_attn_metadata.seq_lens_cpu[num_decodes:])
++            if not torch.equal(q_seqlens_cpu, kv_seqlens_cpu):
++                raise RuntimeError(
++                    "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL requires "
++                    "prefix caching and chunked prefill to be disabled")
++            t4_prefill_attn_bias = (
++                BlockDiagonalCausalMask.from_seqlens(
++                    q_seqlens_cpu.tolist(), device=block_table.device))
++            # The CUTLASS path consumes the current contiguous K/V and
++            # pure-prefill embedding never reads the paged KV cache.
++            t4_skip_kv_cache = True
++
+         return XFormersAttentionMetadata(
+             num_actual_tokens=num_actual_tokens,
+             num_prefill_tokens=num_prefill_tokens,
+@@ -268,6 +307,8 @@
+             block_table=block_table,
+             slot_mapping=slot_mapping,
+             attn_bias=bias,
++            t4_prefill_attn_bias=t4_prefill_attn_bias,
++            t4_skip_kv_cache=t4_skip_kv_cache,
+         )
+
+
+@@ -298,6 +339,8 @@
+         self.num_queries_per_kv = self.num_heads // self.num_kv_heads
+         self.kv_cache_dtype = kv_cache_dtype
+         self.kv_sharing_target_layer_name = kv_sharing_target_layer_name
++        self.use_t4_contiguous_prefill = (
++            os.getenv("VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL", "0") == "1")
+         if alibi_slopes is not None:
+             alibi_slopes = torch.tensor(alibi_slopes, dtype=torch.float32)
+         self.alibi_slopes = alibi_slopes
+@@ -310,6 +353,16 @@
+             logits_soft_cap = 0
+         self.logits_soft_cap = logits_soft_cap
+
++        if self.use_t4_contiguous_prefill:
++            if self.sliding_window != (-1, -1):
++                raise RuntimeError(
++                    "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL does not "
++                    "support sliding-window attention")
++            if self.logits_soft_cap != 0:
++                raise RuntimeError(
++                    "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL does not "
++                    "support logits soft cap")
++
+         XFormersAttentionBackend.validate_head_size(head_size)
+
+         if attn_type != AttentionType.DECODER:
+@@ -355,7 +408,8 @@
+
+         # Cache the input KVs.
+         key_cache, value_cache = kv_cache.unbind(0)
+-        if self.kv_sharing_target_layer_name is None:
++        if (self.kv_sharing_target_layer_name is None
++                and not attn_metadata.t4_skip_kv_cache):
+             # Reshape the input keys and values and store them in the cache.
+             # Skip this if sharing KV cache with an earlier attention layer.
+             # NOTE(woosuk): Here, key and value are padded while slot_mapping is
+@@ -377,27 +431,64 @@
+         num_actual_tokens = attn_metadata.num_actual_tokens
+         num_decode_tokens = attn_metadata.num_decode_tokens
+         if prefill_meta := attn_metadata.prefill_metadata:
 -            descale_shape = (prefill_meta.query_start_loc.shape[0] - 1,
 -                             key.shape[1])
 -            unified_attention(
@@ -40,19 +186,10 @@
 +                # precompiled CUTLASS kernel and avoid paged Triton attention.
 +                # Prefix caching and chunked prefill must be disabled so that
 +                # every KV token needed by a request is present in key/value.
-+                q_seqlens = torch.diff(prefill_meta.query_start_loc)
-+                if not torch.equal(q_seqlens, prefill_meta.seq_lens):
++                attn_bias = prefill_meta.t4_prefill_attn_bias
++                if attn_bias is None:
 +                    raise RuntimeError(
-+                        "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL requires "
-+                        "prefix caching and chunked prefill to be disabled")
-+                if self.sliding_window != (-1, -1):
-+                    raise RuntimeError(
-+                        "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL does not "
-+                        "support sliding-window attention")
-+                if self.logits_soft_cap != 0:
-+                    raise RuntimeError(
-+                        "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL does not "
-+                        "support logits soft cap")
++                        "T4 contiguous-prefill attention bias is missing")
 +
 +                prefill_query = query[num_decode_tokens:num_actual_tokens]
 +                prefill_key = key[num_decode_tokens:num_actual_tokens]
@@ -66,10 +203,8 @@
 +                                         self.num_queries_per_kv, -1)
 +                v = prefill_value.view(1, -1, self.num_kv_heads, 1,
 +                                       self.head_size).expand(
-+                                           -1, -1, -1,
-+                                           self.num_queries_per_kv, -1)
-+                attn_bias = BlockDiagonalCausalMask.from_seqlens(
-+                    q_seqlens.tolist(), device=query.device)
++                                         -1, -1, -1,
++                                         self.num_queries_per_kv, -1)
 +                output[num_decode_tokens:num_actual_tokens] = (
 +                    xops.memory_efficient_attention_forward(
 +                        q,
@@ -102,3 +237,6 @@
 +                    k_descale=layer._k_scale.expand(descale_shape),
 +                    v_descale=layer._v_scale.expand(descale_shape),
 +                )
+
+         if decode_meta := attn_metadata.decode_metadata:
+             # Query for decode. KV is not needed because it is already cached.

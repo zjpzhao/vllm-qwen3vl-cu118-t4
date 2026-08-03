@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import ast
 import importlib
 import importlib.metadata
 import json
@@ -98,6 +99,42 @@ if not torch.cuda.is_available():
 
 assert torch.cuda.get_device_capability(0) == (7, 5), torch.cuda.get_device_capability(0)
 assert "T4" in torch.cuda.get_device_name(0), torch.cuda.get_device_name(0)
+
+backend_file = (pathlib.Path(vllm.__file__).parent / "v1" / "attention" /
+                "backends" / "xformers.py")
+backend_source = backend_file.read_text()
+for marker in (
+        "t4_prefill_attn_bias",
+        "t4_skip_kv_cache",
+        "query_start_loc_cpu",
+        "and not attn_metadata.t4_skip_kv_cache",
+):
+    if marker not in backend_source:
+        raise RuntimeError(
+            f"Optimized T4 XFormers hotfix marker is missing: {marker}")
+
+backend_tree = ast.parse(backend_source, filename=str(backend_file))
+forward_node = None
+for node in backend_tree.body:
+    if isinstance(node, ast.ClassDef) and node.name == "XFormersAttentionImpl":
+        forward_node = next(
+            (item for item in node.body
+             if isinstance(item, ast.FunctionDef) and item.name == "forward"),
+            None,
+        )
+        break
+if forward_node is None:
+    raise RuntimeError("Cannot locate XFormersAttentionImpl.forward")
+for node in ast.walk(forward_node):
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "tolist"):
+        raise RuntimeError(
+            "GPU-synchronizing .tolist() remains in hotfix forward")
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "torch" and node.func.attr == "equal"):
+        raise RuntimeError(
+            "GPU-synchronizing torch.equal remains in hotfix forward")
 
 x = torch.randn(1024, 1024, device="cuda", dtype=torch.float16)
 print("CUDA tensor sum:", x.sum().item())
