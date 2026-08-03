@@ -36,32 +36,56 @@ mkdir -p "${TRITON_CACHE_DIR}"
 
 exec > >(tee "${RUN_DIR}/accuracy_diagnosis.log") 2>&1
 echo "RUN_DIR=${RUN_DIR}"
-echo "Stage 1/2: MRoPE Triton versus pure PyTorch"
-if ! python "${REPO_DIR}/diagnose_accuracy_mismatch.py" mrope \
-  --model "${MODEL_PATH}" \
-  --output "${RUN_DIR}/diagnose_mrope.json" \
-  2>&1 | tee "${RUN_DIR}/diagnose_mrope.log"; then
-  echo "STOP: MRoPE failed. The server remains running for inspection."
-  exit 2
+if [[ -s "${RUN_DIR}/diagnose_mrope.json" ]] && python - \
+  "${RUN_DIR}/diagnose_mrope.json" <<'PY'
+import json
+import sys
+raise SystemExit(0 if json.load(open(sys.argv[1]))["passed"] else 1)
+PY
+then
+  echo "Stage 1/2: reusing the existing passing MRoPE result"
+else
+  echo "Stage 1/2: MRoPE Triton versus pure PyTorch"
+  if ! python "${REPO_DIR}/diagnose_accuracy_mismatch.py" mrope \
+    --model "${MODEL_PATH}" \
+    --output "${RUN_DIR}/diagnose_mrope.json" \
+    2>&1 | tee "${RUN_DIR}/diagnose_mrope.log"; then
+    echo "STOP: MRoPE failed. The server remains running for inspection."
+    exit 2
+  fi
 fi
 
-listener_pid="$({
+listener_pid() {
   ss -H -lntp "sport = :${PORT}" 2>/dev/null \
     | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p; t found; b; :found q'
-} || true)"
+}
+
+listener_pid="$(listener_pid || true)"
 if [[ -n "${listener_pid}" ]]; then
   echo "Stopping vLLM PID ${listener_pid} before loading Transformers..."
   kill -TERM "${listener_pid}"
   for _ in $(seq 1 60); do
-    if ! kill -0 "${listener_pid}" 2>/dev/null; then
+    remaining_listener="$(listener_pid || true)"
+    process_state="$(ps -o stat= -p "${listener_pid}" 2>/dev/null \
+      | tr -d '[:space:]' || true)"
+    if [[ -z "${remaining_listener}" || "${process_state}" == Z* ]]; then
       break
     fi
     sleep 1
   done
-  if kill -0 "${listener_pid}" 2>/dev/null; then
-    echo "ERROR: PID ${listener_pid} did not stop after 60 seconds." >&2
+  remaining_listener="$(listener_pid || true)"
+  if [[ -n "${remaining_listener}" ]]; then
+    echo "ERROR: port ${PORT} is still listened on by PID ${remaining_listener}." >&2
     exit 1
   fi
+  process_state="$(ps -o stat= -p "${listener_pid}" 2>/dev/null \
+    | tr -d '[:space:]' || true)"
+  if [[ "${process_state}" == Z* ]]; then
+    echo "Listener is gone; PID ${listener_pid} is a harmless zombie awaiting parent reap."
+  else
+    echo "Listener on port ${PORT} stopped."
+  fi
+  sleep 3
 fi
 
 echo "Stage 2/2: scan Transformers token hidden states"
