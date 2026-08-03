@@ -456,7 +456,7 @@ python -m pip check
 
 `ldd` 不得出现 `not found`，不得解析到任何 toolkit `lib/stubs` 或 CUDA 12 compat 路径；`pip check` 必须输出 `No broken requirements found`。离线包中的 `verify_target.py` 已自动覆盖上述版本、动态库、T4、NMS 与 XFormers 注意力检查。
 
-### 6.6 最小化启动并逐步放量
+### 6.6 IPv6 全模态启动、验收与逐步放量
 
 该 wheel 只承诺 `--dtype half --kv-cache-dtype auto`，不承诺 FP8、DeepGEMM、DeepSeek FP8 MLA、FlashMLA、FA3、Hopper/Blackwell kernel 及 SM75 构建时跳过的量化后端。
 
@@ -553,71 +553,11 @@ env \
 无法访问客户端本地路径。本轮已验证文本、纯图片和图片加文本；视频入口可开放，
 但生产接入前仍需用固定视频样本建立独立的精度和显存基线。
 
-精度验证采用两阶段执行，避免 Transformers 与 vLLM 两份 2B 模型同时占用 T4：
+Transformers 与 vLLM 的精度对齐方法、分阶段命令、诊断过程和最终指标不在本文
+重复展开，统一见
+[Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md](Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md)。
 
-```bash
-conda activate vllm-t4-cu118-torch271
-cd /root/vllm-qwen3vl-cu118-t4
-./run_accuracy_check.sh transformers
-./run_accuracy_check.sh vllm
-```
-
-第一条命令停止现有 vLLM、建立时间戳目录并生成 Transformers 基准；第二条命令
-复用 `accuracy_runs/latest`，启动允许单图片输入的服务，生成 vLLM 向量并比较。
-如需自定义路径，设置 `MODEL_PATH`、`IMAGE_PATH` 或 `RUN_DIR`。等价展开命令如下：
-
-```bash
-cd /root/vllm-qwen3vl-cu118-t4
-export MODEL=/root/Qwen3-VL-Embedding-2B
-export IMAGE=/root/test.jpg
-export RUN_DIR="$PWD/accuracy_runs/$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$RUN_DIR"
-set -o pipefail
-echo "accuracy outputs: $RUN_DIR"
-
-PID="$(ss -H -lntp 'sport = :8000' 2>/dev/null \
-  | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | head -1)"
-if [ -n "$PID" ]; then
-  kill -TERM "$PID"
-  for _ in $(seq 1 60); do
-    kill -0 "$PID" 2>/dev/null || break
-    sleep 1
-  done
-fi
-python compare_vllm_transformers.py reference \
-  --model "$MODEL" \
-  --image "$IMAGE" \
-  --output "$RUN_DIR/precision_transformers.json" \
-  2>&1 | tee "$RUN_DIR/precision_transformers.log"
-
-IMAGE_LIMIT=1 VIDEO_LIMIT=0 \
-LOG_FILE="$RUN_DIR/vllm_server.log" \
-PID_FILE="$RUN_DIR/vllm_server.pid" \
-./restart_vllm_server_ipv6.sh
-until curl -fsS --noproxy '*' -g http://[::1]:8000/health; do sleep 2; done
-python compare_vllm_transformers.py vllm \
-  --endpoint http://[::1]:8000/v1/embeddings \
-  --image "$IMAGE" \
-  --output "$RUN_DIR/precision_vllm.json" \
-  2>&1 | tee "$RUN_DIR/precision_vllm.log"
-python compare_vllm_transformers.py compare \
-  --reference "$RUN_DIR/precision_transformers.json" \
-  --candidate "$RUN_DIR/precision_vllm.json" \
-  --report "$RUN_DIR/precision_report.json" \
-  2>&1 | tee "$RUN_DIR/precision_compare.log"
-
-find "$RUN_DIR" -maxdepth 1 -type f -printf '%f\n' | sort
-```
-
-脚本强制对齐 FP16、instruction、chat template、LAST pooling、L2 normalize 和
-图片字节，默认要求相同输入最小余弦不低于 0.995、pairwise similarity MAE 不高于
-0.02、检索 Top-1 完全一致。每次运行的向量 JSON、比较报告、推理日志和 vLLM
-服务日志统一保存在 `accuracy_runs/<时间戳>/`，该目录不会提交到 Git。
-本次真实 T4 结果为：最小同输入 cosine `0.9998480503`、pairwise similarity
-MAE `0.0007551337`、Top-1 100% 一致，`failures=[]`。完整数据与首次失败定位见
-独立精度文档。
-阈值用于工程回归，不替代在业务标注集上计算 Recall@K、
-MRR/nDCG；首次结果应保存为后续固定基线。文本链路通过后，可逐步提高
+服务基础验收通过后，可逐步提高
 `--max-num-seqs`、上下文长度和显存利用率；prefix caching 与 chunked prefill
 在此热补丁中仍不能启用。
 
