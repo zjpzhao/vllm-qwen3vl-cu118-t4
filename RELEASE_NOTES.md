@@ -13,7 +13,10 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
   `Qwen3VLForEmbedding`，并提供端到端验证脚本。
 - 增加 `apply_t4_xformers_hotfix.py`：在 T4 纯 prefill embedding 路径中使用
   xFormers CUTLASS contiguous attention，避开 SM75 上无法降低的 Triton
-  Unified/Flex Attention FP16 kernel；安装脚本会自动应用并保留可恢复备份。
+  Unified/Flex Attention FP16 kernel；优化版在 CPU metadata builder 中一次性
+  校验长度和构造 block-diagonal bias，所有语言层复用该 bias，并在确认无 decode、
+  无历史 KV 的纯 prefill 后跳过无用 paged KV cache 写入。安装脚本会自动应用、
+  升级旧热补丁并保留可恢复备份。
 - 将 `ray[cgraph]` 改为基础 Ray，避免引入 `cupy-cuda12x`。
 - 使用 glibc 2.28 sysroot 构建并移除绝对 Conda RPATH；vLLM wheel 的
   `auditwheel show` 系统符号下限为 `manylinux_2_24_x86_64`。
@@ -22,8 +25,20 @@ PyTorch 2.7.1+cu118、torchvision 0.22.1+cu118 和源码构建的 XFormers
   验收：OpenAI `/v1/embeddings` 返回 2048 维归一化向量，L2 norm 为
   `1.0000000199780135`。
 - IPv6 重启脚本默认开启 Qwen3-VL 视觉分支（每请求 1 张图片，视频关闭），并新增
-  Transformers/vLLM 两阶段精度比较脚本，覆盖逐向量误差、相似度矩阵与检索
+  Transformers/vLLM 单命令串行精度比较脚本，覆盖逐向量误差、相似度矩阵与检索
   Top-1 一致性。
+- IPv6 重启脚本新增可回退的 `T4_EXECUTION_MODE=cudagraph` 实验模式：使用
+  vLLM level 3 做 piecewise Dynamo 分段和 CUDA Graph capture，但显式关闭
+  TorchInductor，避免重新触发 SM75 Triton lowering；默认仍为已验证的 eager/O0。
+- 真实 T4 后续验证确认上述 CUDA Graph 实验在 profile 阶段被 TorchDynamo 的动态
+  GEMM dispatch 阻断，尚未进入 capture；生产模式固定为 eager/O0，不开启
+  TorchDynamo 或 TorchInductor。完整结论见独立优化部署文档。
+- 服务和单命令串行精度脚本默认导出 `OMP_NUM_THREADS=16`；精度脚本在所有详细输出
+  之后打印明确的最终 PASS/FAIL 结论和关键阈值对照，失败时仍保留非零退出码。
+- `run_accuracy_check.sh` 不再要求手动分阶段：一次调用依次运行 Transformers、
+  vLLM、结果比较、最终结论和服务清理，所有产物保存在同一时间戳目录。
+- 精度脚本的 vLLM 阶段新增强制退出清理：正常、失败和信号退出都会先 TERM，等待
+  3 秒后 KILL 残留 API Server、EngineCore 与 vLLM spawn 进程，并确认端口释放。
 - 修复 chat embedding 与官方处理器的 LAST pooling 对齐：所有标准请求显式设置
   `add_special_tokens=true`，确保末尾 `<|endoftext|>` 被保留并参与 pooling。
 - 真实 T4 的 6 用例文本/图片精度报告已通过：最小同输入 cosine

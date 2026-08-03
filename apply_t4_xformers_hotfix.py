@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 MARKER = "VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL"
+OPTIMIZED_MARKER = "t4_prefill_attn_bias"
 
 
 def locate_target() -> Path:
@@ -42,7 +43,7 @@ def main() -> None:
         return
 
     source = target.read_text()
-    if MARKER in source:
+    if MARKER in source and OPTIMIZED_MARKER in source:
         print(f"ALREADY PATCHED: {target}")
         return
     if not patch_file.is_file():
@@ -50,7 +51,16 @@ def main() -> None:
     if shutil.which("patch") is None:
         raise SystemExit("ERROR: GNU patch is required")
 
-    shutil.copy2(target, backup)
+    upgrading_legacy_hotfix = MARKER in source
+    if upgrading_legacy_hotfix:
+        if not backup.is_file():
+            raise SystemExit(
+                "ERROR: legacy hotfix detected but original backup is missing: "
+                f"{backup}")
+        shutil.copy2(backup, target)
+        print(f"UPGRADING LEGACY HOTFIX: restored {backup}")
+    else:
+        shutil.copy2(target, backup)
     result = subprocess.run(
         ["patch", "--batch", "--forward", str(target), str(patch_file)],
         text=True,
@@ -62,9 +72,11 @@ def main() -> None:
             "ERROR: hotfix did not apply; original file was restored\n"
             + result.stdout + result.stderr)
     py_compile.compile(str(target), doraise=True)
-    if MARKER not in target.read_text():
+    patched_source = target.read_text()
+    if MARKER not in patched_source or OPTIMIZED_MARKER not in patched_source:
         shutil.copy2(backup, target)
-        raise SystemExit("ERROR: marker missing after patch; original restored")
+        raise SystemExit(
+            "ERROR: optimized markers missing after patch; original restored")
     print(f"PATCHED: {target}")
     print(f"BACKUP:  {backup}")
 

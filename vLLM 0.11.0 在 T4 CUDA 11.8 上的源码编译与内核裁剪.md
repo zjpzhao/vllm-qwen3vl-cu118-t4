@@ -389,7 +389,11 @@ python verify_qwen3vl_embedding.py \
 kernel；两者在 Torch 2.7.1 配套 Triton 的 `ConvertTritonGPUToLLVM` 阶段均会报
 `Unsupported conversion from f16 to f16`。补丁仅针对 Qwen3-VL
 pooling/embedding 的纯 prefill，把当前连续 Q/K/V 交给预编译的 xFormers
-CUTLASS kernel，并要求关闭 prefix caching 和 chunked prefill。回滚命令为：
+CUTLASS kernel，并要求关闭 prefix caching 和 chunked prefill。优化版在 CPU
+metadata builder 中一次完成长度校验和 block-diagonal bias 构造，各语言层复用
+同一 bias；确认不存在 decode 和历史 KV 后，跳过后续不会读取的 paged KV cache
+写入。旧版热补丁会由 `apply_t4_xformers_hotfix.py` 使用原始备份自动升级，无需
+重编 wheel。回滚命令为：
 
 ```bash
 python apply_t4_xformers_hotfix.py --restore
@@ -516,6 +520,37 @@ MAX_NUM_SEQS=8 MAX_NUM_BATCHED_TOKENS=4096 \
 脚本仅终止当前占用 8000 端口的进程，等待其正常退出后以本文完整参数后台启动；
 PID 和日志分别保存为 `vllm_server.pid`、`logs/vllm_server.log`。日志目录由脚本
 自动创建，也可通过 `LOG_DIR` 或 `LOG_FILE` 覆盖。
+
+默认 `T4_EXECUTION_MODE=eager` 保持 `--enforce-eager -O0`。以下
+piecewise CUDA Graph 命令仅保留用于复现失败，不得作为生产启动方式：
+
+```bash
+T4_EXECUTION_MODE=cudagraph ./restart_vllm_server_ipv6.sh
+```
+
+vLLM 0.11.0 的 pooling 模型不使用 full CUDA Graph，piecewise CUDA Graph 又要求
+level 3 分段，因此该模式使用 `level=3`、`cudagraph_mode=PIECEWISE`，同时显式设置
+`use_inductor=false`。这会用 Dynamo 划分 attention 边界并捕获非 attention 子图，
+但不会让 TorchInductor 生成新的 Triton kernel；XFormers CUTLASS attention 仍在
+CUDA Graph 外运行。默认 capture sizes 是
+`[32,64,128,256,512,1024,2048]`，更大的 batch 自动走 eager。可以用
+`CUDAGRAPH_CAPTURE_SIZES_JSON` 覆盖，但所有值必须为正整数且不超过
+`MAX_NUM_BATCHED_TOKENS`。
+
+真实 T4 已完成验证并确认该入口不可用：即使 `use_inductor=false`，level 3 仍需
+TorchDynamo 捕获计算图，而动态 GEMM dispatch 会触发
+`non-function or method super: _disabled_torch_function_impl`。失败发生在 profile
+阶段，尚未进入 graph capture；生产模式必须回退 eager：
+
+```bash
+T4_EXECUTION_MODE=eager OMP_NUM_THREADS=16 ./run_accuracy_check.sh
+```
+
+回退命令：
+
+```bash
+T4_EXECUTION_MODE=eager ./restart_vllm_server_ipv6.sh
+```
 
 日志必须出现 `Using XFormers backend on V1 engine` 和支持任务
 `['encode', 'embed']`。T4 上关于 FA2 需要 compute capability >= 8 的信息是

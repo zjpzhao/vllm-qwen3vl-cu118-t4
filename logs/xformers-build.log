@@ -1,5 +1,5 @@
 WARNING: The directory '/home/tiger/.cache/pip' or its parent directory is not owned or is not writable by the current user. The cache has been disabled. Check the permissions and owner of that directory. If executing pip with sudo, you should use sudo's -H flag.
-Looking in indexes: https://bytedpypi.byted.org/simple/
+Looking in indexes: https://<PRIVATE_PYPI_HOST>/simple/
 Processing ./.
   Preparing metadata (pyproject.toml): started
   Running command Preparing metadata (pyproject.toml)

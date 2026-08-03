@@ -1,11 +1,69 @@
 # Qwen3-VL Embedding：vLLM 0.11.0 / T4 / CUDA 11.8 / glibc 2.28 发布包
 
+项目地址：<https://github.com/zjpzhao/vllm-qwen3vl-cu118-t4>
+
 这是面向 `x86_64 + CPython 3.10 + glibc >= 2.28 + NVIDIA T4 (SM75)` 的定制构建，包含 PyTorch 2.7.1+cu118、XFormers 0.0.31、裁剪后的 vLLM 0.11.0 wheel、Qwen3-VL 文本/视觉 embedding/pooling 回移、离线依赖、源码补丁、安装脚本和验证脚本。
 
 该构建只保证 FP16、`--kv-cache-dtype auto` 和 XFormers attention；不支持 FP8/DeepGEMM、DeepSeek FP8 MLA、FA3、Ray CGraph/Pipeline Parallel，以及编译时跳过的 Hopper/Blackwell 等高架构内核。它不是通用 CUDA wheel。
 
+## 当前生产配置
+
+```text
+引擎：              vLLM V1
+任务：              pooling / embedding
+精度：              FP16
+执行模式：          PyTorch eager
+vLLM 编译等级：     O0
+CUDA Graph：        关闭
+TorchDynamo：       关闭
+TorchInductor：     关闭
+Attention：         XFormers CUTLASS
+MRoPE：             Triton SM75 kernel
+GPU：               单张 T4，tensor_parallel_size=1
+CPU 线程：          OMP_NUM_THREADS=16
+最大上下文：        2048
+最大并发序列：      8
+单 iteration token： 4096
+Prefix caching：     关闭
+Chunked prefill：    关闭
+图片限制：          每请求 1 张
+视频限制：          关闭
+服务监听：          IPv6 [::]:8000
+```
+
+请求执行过程：
+
+```text
+HTTP 请求
+  → CPU 解析图片、文本和 chat template
+  → tokenizer / multimodal processor
+  → vLLM V1 scheduler 合批
+  → 图片进入视觉编码器
+  → Qwen3-VL language backbone
+  → Triton MRoPE
+  → XFormers CUTLASS causal attention
+  → LAST pooling
+  → L2 normalize
+  → 返回 2048 维 embedding
+```
+
+本次 `main` 整合包含：
+
+- T4 XFormers contiguous-prefill 热补丁及旧补丁自动升级；
+- attention bias/序列校验由逐层执行改为每 batch 复用；
+- 消除 `.tolist()` / `torch.equal()` 造成的 GPU 同步；
+- 纯 prefill embedding 跳过无用 paged KV-cache 写入；
+- Transformers → vLLM → 比较 → 停服的单命令精度验收；
+- IPv6 后台启停、`logs/` 统一日志目录和 `OMP_NUM_THREADS=16`；
+- CUDA Graph/TorchInductor 失败路径的复现与 Eager 生产回退。
+
+这是当前在真实 T4 上完成启动、文本/图片请求和 Transformers
+精度对齐的生产路径。CUDA Graph、TorchDynamo 和 TorchInductor 均已确认
+在当前 T4/SM75 软件栈上无法稳定启用。
+
 详细资料：
 
+- [T4 XFormers 热补丁、Eager 性能模式与生产部署](T4-XFormers-热补丁与-Eager-优化部署说明.md)
 - [Transformers/vLLM 精度对齐测试、问题定位与最终结果](Qwen3-VL-Embedding-Transformers-vLLM-精度对齐测试.md)
 - [源码编译、回移和内核裁剪说明](vLLM%200.11.0%20在%20T4%20CUDA%2011.8%20上的源码编译与内核裁剪.md)
 
@@ -21,6 +79,7 @@ conda activate vllm-t4-cu118-torch271
 export VLLM_USE_V1=1
 export VLLM_ATTENTION_BACKEND=XFORMERS
 export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
+export OMP_NUM_THREADS=16
 export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
 export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
 python verify_target.py
@@ -30,72 +89,121 @@ python verify_qwen3vl_embedding.py \
 
 如需同时验证视觉输入，追加 `--image /path/to/test.jpg`。验证脚本要求输出维度为 2048、L2 norm 约为 1，并分别覆盖纯文本和可选图片 embedding。服务默认允许每个请求携带 1 张图片，视频关闭；全模态启动命令见下一节。
 
-## 启动 Embedding 后端
+## main 分支推荐使用流程
 
-以下命令已经在真实 T4 / R450.191.01 / CUDA 11.8 compatibility package
-环境中通过验证。热补丁只支持 pooling/embedding 的纯 prefill，因此 prefix
-caching 和 chunked prefill 必须保持关闭。
+T4 XFormers prefill 优化、精度对齐脚本和 Eager 生产配置已合并到
+`main`，目标机不再需要切换 `perf/t4-xformers-prefill` 分支。已安装
+环境的目标机按以下顺序更新和验收：
 
 ```bash
 conda activate vllm-t4-cu118-torch271
 cd /root/vllm-qwen3vl-cu118-t4
 
-unset CUDA_HOME
-export VLLM_USE_V1=1
-export VLLM_ATTENTION_BACKEND=XFORMERS
-export VLLM_T4_XFORMERS_CONTIGUOUS_PREFILL=1
-export TRITON_PTXAS_PATH=/usr/local/cuda-11.8/bin/ptxas
-export TRITON_CACHE_DIR=/tmp/triton-cache-cu118-sm75-xformers
-export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}
+git fetch origin main
+git checkout main
+git merge --ff-only origin/main
 
-mkdir -p "${TRITON_CACHE_DIR}"
+python apply_t4_xformers_hotfix.py
 mkdir -p logs
-set -o pipefail
+python verify_target.py 2>&1 | tee logs/verify_target_perf.log
 
-vllm serve /root/Qwen3-VL-Embedding-2B \
-  --host :: \
-  --port 8000 \
-  --disable-uvicorn-access-log \
-  --served-model-name Qwen3-VL-Embedding-2B \
-  --runner pooling \
-  --convert embed \
-  --dtype half \
-  --kv-cache-dtype auto \
-  --enforce-eager \
-  -O0 \
-  --no-enable-prefix-caching \
-  --no-enable-chunked-prefill \
-  --gpu-memory-utilization 0.80 \
-  --max-model-len 2048 \
-  --max-num-seqs 8 \
-  --max-num-batched-tokens 4096 \
-  --tensor-parallel-size 1 \
-  --limit-mm-per-prompt '{"image":1,"video":0}' \
-  --trust-remote-code \
-  2>&1 | tee logs/vllm_server.log
+T4_EXECUTION_MODE=eager \
+OMP_NUM_THREADS=16 \
+./run_accuracy_check.sh
 ```
 
-`--host ::` 用于监听 IPv6；若 `ss -lntp | grep ':8000'` 仅显示
-`0.0.0.0:8000`，则通过 `http://[IPv6]:8000` 访问一定失败。已经按旧参数启动时，
-在激活目标 Conda 环境后使用仓库脚本安全重启：
+`run_accuracy_check.sh` 会依次运行 Transformers reference、vLLM candidate 和
+结果比较，并在结束时停止测试用 vLLM。只有最终输出
+`ACCURACY PASS` 后才重新启动生产服务：
+
+```bash
+T4_EXECUTION_MODE=eager \
+OMP_NUM_THREADS=16 \
+./restart_vllm_server_ipv6.sh
+
+until curl -fsS --noproxy '*' -g http://[::1]:8000/health; do
+  sleep 2
+done
+```
+
+生产默认值为 `MAX_MODEL_LEN=2048`、`MAX_NUM_SEQS=8`、
+`MAX_NUM_BATCHED_TOKENS=4096`、`IMAGE_LIMIT=1`、`VIDEO_LIMIT=0`。
+CUDA Graph 和 TorchInductor 在当前 T4/SM75 环境不可用，不应将
+`T4_EXECUTION_MODE=cudagraph` 用于生产。
+
+## 启动 Embedding 后端
+
+以下 shell 脚本已在真实 T4 / R450.191.01 / CUDA 11.8
+compatibility package 环境通过验证。热补丁只支持 pooling/embedding
+的纯 prefill，因此 prefix caching 和 chunked prefill 必须保持关闭。
+请始终通过仓库脚本启动，不要手写 `vllm serve` 长命令：
 
 ```bash
 conda activate vllm-t4-cu118-torch271
 cd /root/vllm-qwen3vl-cu118-t4
 chmod +x restart_vllm_server_ipv6.sh
-./restart_vllm_server_ipv6.sh
+T4_EXECUTION_MODE=eager OMP_NUM_THREADS=16 ./restart_vllm_server_ipv6.sh
 ```
+
+`restart_vllm_server_ipv6.sh` 内部已固化 XFormers 后端、FP16、Eager/O0、
+IPv6 监听、热补丁开关、默认合批参数与日志路径。若
+`ss -lntp | grep ':8000'` 仅显示 `0.0.0.0:8000`，说明当前运行的不是
+该 IPv6 脚本启动的实例。
 
 脚本会向当前监听 8000 端口的进程发送 `SIGTERM`，最多等待 30 秒，然后使用
 上述完整参数在后台启动服务；PID 写入 `vllm_server.pid`，输出写入
 `logs/vllm_server.log`。脚本会自动创建日志目录；可用 `LOG_DIR` 修改默认日志
 目录，或用 `LOG_FILE` 指定完整日志路径。如模型或端口不同，可在命令前设置 `MODEL_PATH`、
 `SERVED_MODEL_NAME`、`PORT`、`MAX_MODEL_LEN`、`MAX_NUM_SEQS`、
-`MAX_NUM_BATCHED_TOKENS`。脚本默认允许每个调度 iteration
+`MAX_NUM_BATCHED_TOKENS`、`T4_EXECUTION_MODE` 和
+`CUDAGRAPH_CAPTURE_SIZES_JSON`。服务默认导出 `OMP_NUM_THREADS=16`，也可在
+命令前覆盖。脚本默认允许每个调度 iteration
 合批 8 条序列，并把总 token budget 设为 4096；旧版的
 `--max-num-seqs 1` 会完全禁止请求级合批，客户端增加并发只会形成等待队列。
 高吞吐启动默认关闭 Uvicorn 的逐请求 access log，避免日志写盘成为前端瓶颈；
 vLLM 的周期统计和 `/metrics` 仍保留。
+
+### T4 CUDA Graph 实验结论：失败
+
+默认 `T4_EXECUTION_MODE=eager` 继续使用已经完成精度验证的
+`--enforce-eager -O0`。仓库保留以下 piecewise CUDA Graph 入口用于复现，不得
+作为生产启动方式：
+
+```bash
+T4_EXECUTION_MODE=cudagraph ./restart_vllm_server_ipv6.sh
+```
+
+该模式使用 vLLM 0.11.0 的 level 3 做 Dynamo 分段，但显式设置
+`use_inductor=false`，因此不会让 TorchInductor 为 SM75 生成此前失败的 Triton
+FP16 kernel；`vllm.unified_attention_with_output` 仍是分段边界，XFormers CUTLASS
+attention 在 CUDA Graph 外执行，非 attention 子图使用 piecewise CUDA Graph。
+pooling 模型不使用 full CUDA Graph。默认捕获大小为
+`[32,64,128,256,512,1024,2048]`，超过最大捕获大小的 batch 自动回退到 eager；
+需要覆盖时传入不带空格的 JSON，并确保每个值不超过 token budget：
+
+```bash
+T4_EXECUTION_MODE=cudagraph \
+CUDAGRAPH_CAPTURE_SIZES_JSON='[64,128,256,512,1024]' \
+./restart_vllm_server_ipv6.sh
+```
+
+真实 T4 已确认该模式在引擎 profile 阶段失败：虽然 `use_inductor=false`，level 3
+仍需要 TorchDynamo 捕获计算图，而当前动态 GEMM dispatch 会触发
+`non-function or method super: _disabled_torch_function_impl`。它没有进入 CUDA
+Graph capture，更不能继续开启 TorchInductor。生产精度检查必须使用 eager：
+
+```bash
+T4_EXECUTION_MODE=eager OMP_NUM_THREADS=16 ./run_accuracy_check.sh
+```
+
+精度脚本在详细 JSON 和产物列表之后还会打印最终 PASS/FAIL 结论、执行模式、三项
+关键指标及报告路径；比较失败时会先打印失败原因，再返回非零退出码。无论正常
+完成、比较失败还是中途异常，vLLM 阶段都会先 TERM、等待 3 秒，再 KILL 残留的
+API Server、EngineCore 和 vLLM spawn 进程；正常路径确认端口释放后才打印最终结论。
+
+如误启 CUDA Graph 或需要从失败实验恢复，执行
+`T4_EXECUTION_MODE=eager OMP_NUM_THREADS=16 ./restart_vllm_server_ipv6.sh`
+回到已验证路径。
 
 如需同时开放文本、图片和视频，保持同一 IPv6 监听配置并覆盖多模态限额：
 
@@ -290,14 +398,14 @@ Top-1 一致率。`compare_vllm_transformers.py` 已固定两边均为 FP16、�
 T4 只有 16 GiB，建议先停止服务，生成 Transformers 基准；再启动 vLLM 视觉服务
 生成候选向量并比较：
 
-推荐使用两阶段包装脚本。首次执行只跑 Transformers，确认通过后再启动视觉
-vLLM 并比较；脚本自动复用 `accuracy_runs/latest` 指向的结果目录：
+推荐使用单命令包装脚本。一次执行会先停止已有服务并运行 Transformers，再启动
+视觉 vLLM、生成候选、自动比较、打印最终结论并关闭测试服务；所有产物写入同一个
+时间戳目录，`accuracy_runs/latest` 指向该目录：
 
 ```bash
 conda activate vllm-t4-cu118-torch271
 cd /root/vllm-qwen3vl-cu118-t4
-./run_accuracy_check.sh transformers
-./run_accuracy_check.sh vllm
+./run_accuracy_check.sh
 ```
 
 如模型或图片路径不同，可分别设置 `MODEL_PATH` 和 `IMAGE_PATH`。下面是脚本内部
@@ -375,6 +483,13 @@ EOS/LAST pooling 根因和逐用例结果见
 ```bash
 python apply_t4_xformers_hotfix.py
 ```
+
+优化版热补丁会识别并升级旧版：它先从 `.pre-t4-hotfix` 恢复原始
+`xformers.py`，再应用新补丁，因此不需要重装或重新编译 wheel。新路径把序列长度
+校验和 block-diagonal bias 构造移到 CPU metadata builder，每个 batch 只执行一次，
+语言层复用同一 bias；在确认请求为无 decode、无历史 KV 的纯 prefill 后，还会跳过
+后续不会读取的 paged KV cache 写入。应用后仍必须重新运行精度检查与同负载性能
+基准，不能把静态验证当作真实 T4 性能结论。
 
 需要回滚时执行 `python apply_t4_xformers_hotfix.py --restore`。该热补丁仅适用
 于 pooling/embedding 的纯 prefill；必须禁用 prefix caching 和 chunked prefill，

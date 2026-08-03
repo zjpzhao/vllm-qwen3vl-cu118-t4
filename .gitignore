@@ -8,7 +8,10 @@
 /accuracy_runs/
 /accuracy_inputs/
 /logs/vllm_server.log
+/embedding_response.json
+/vllm_server.log
 /vllm_server.pid
+*.swp
 
 __pycache__/
 *.pyc
