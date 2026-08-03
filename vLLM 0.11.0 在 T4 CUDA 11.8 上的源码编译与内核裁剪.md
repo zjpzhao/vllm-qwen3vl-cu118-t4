@@ -535,6 +535,17 @@ env \
 精度验证采用两阶段执行，避免 Transformers 与 vLLM 两份 2B 模型同时占用 T4：
 
 ```bash
+conda activate vllm-t4-cu118-torch271
+cd /root/vllm-qwen3vl-cu118-t4
+./run_accuracy_check.sh transformers
+./run_accuracy_check.sh vllm
+```
+
+第一条命令停止现有 vLLM、建立时间戳目录并生成 Transformers 基准；第二条命令
+复用 `accuracy_runs/latest`，启动允许单图片输入的服务，生成 vLLM 向量并比较。
+如需自定义路径，设置 `MODEL_PATH`、`IMAGE_PATH` 或 `RUN_DIR`。等价展开命令如下：
+
+```bash
 cd /root/vllm-qwen3vl-cu118-t4
 export MODEL=/root/Qwen3-VL-Embedding-2B
 export IMAGE=/root/test.jpg

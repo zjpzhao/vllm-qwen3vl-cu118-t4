@@ -6,6 +6,7 @@
 *.part-*
 /SHA256SUMS
 /accuracy_runs/
+/accuracy_inputs/
 
 __pycache__/
 *.pyc

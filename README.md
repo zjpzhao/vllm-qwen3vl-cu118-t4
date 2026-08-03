@@ -220,6 +220,19 @@ Top-1 一致率。`compare_vllm_transformers.py` 已固定两边均为 FP16、�
 T4 只有 16 GiB，建议先停止服务，生成 Transformers 基准；再启动 vLLM 视觉服务
 生成候选向量并比较：
 
+推荐使用两阶段包装脚本。首次执行只跑 Transformers，确认通过后再启动视觉
+vLLM 并比较；脚本自动复用 `accuracy_runs/latest` 指向的结果目录：
+
+```bash
+conda activate vllm-t4-cu118-torch271
+cd /root/vllm-qwen3vl-cu118-t4
+./run_accuracy_check.sh transformers
+./run_accuracy_check.sh vllm
+```
+
+如模型或图片路径不同，可分别设置 `MODEL_PATH` 和 `IMAGE_PATH`。下面是脚本内部
+执行逻辑的等价展开命令：
+
 ```bash
 conda activate vllm-t4-cu118-torch271
 cd /root/vllm-qwen3vl-cu118-t4
@@ -352,7 +365,8 @@ SHA256SUMS
 ```bash
 git add README.md environment.yml constraints-t4-cu118.txt \
   install_target.sh verify_target.py verify_qwen3vl_embedding.py \
-  compare_vllm_transformers.py restart_vllm_server_ipv6.sh \
+  compare_vllm_transformers.py run_accuracy_check.sh \
+  restart_vllm_server_ipv6.sh \
   requirements patches logs \
   'vLLM 0.11.0 在 T4 CUDA 11.8 上的源码编译与内核裁剪.md' \
   .gitignore
