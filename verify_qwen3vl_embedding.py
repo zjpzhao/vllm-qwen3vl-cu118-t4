@@ -55,7 +55,12 @@ def make_request(tokenizer, text: str, instruction: str, image=None):
         tokenize=False,
         add_generation_prompt=True,
     )
-    request = {"prompt": prompt}
+    # Match the official Qwen3-VL embedding processor. Its final active token
+    # is <|endoftext|>; raw chat strings in vLLM are otherwise tokenized with
+    # add_special_tokens=False and LAST pooling selects the preceding newline.
+    request = {
+        "prompt_token_ids": tokenizer.encode(prompt, add_special_tokens=True),
+    }
     if image is not None:
         request["multi_modal_data"] = {"image": image}
     return request

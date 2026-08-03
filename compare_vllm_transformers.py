@@ -282,6 +282,12 @@ def vllm_payload(case: dict[str, Any], model_name: str) -> dict[str, Any]:
             {"role": "user", "content": content},
         ],
         "add_generation_prompt": True,
+        # The official Qwen3-VL embedding wrapper calls Qwen3VLProcessor with
+        # special tokens enabled. For this tokenizer that appends
+        # <|endoftext|>, which is also the token selected by LAST pooling.
+        # EmbeddingChatRequest defaults this option to False, so it must be
+        # explicit here or vLLM pools the preceding newline token instead.
+        "add_special_tokens": True,
         "encoding_format": "float",
         "normalize": True,
         "mm_processor_kwargs": {
@@ -325,6 +331,7 @@ def run_vllm(args: argparse.Namespace) -> None:
             "model": args.model_name,
             "dtype": "float16",
             "pooling": "LAST + L2 normalize",
+            "add_special_tokens": True,
             "usage": usages,
         },
         cases,

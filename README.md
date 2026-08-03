@@ -138,6 +138,7 @@ curl -s http://127.0.0.1:8000/v1/embeddings \
       }
     ],
     "add_generation_prompt": true,
+    "add_special_tokens": true,
     "encoding_format": "float",
     "normalize": true
   }' -o embedding_response.json
@@ -168,10 +169,16 @@ print("PASS")
 PY
 ```
 
-真实目标机实测得到 `dimension: 2048`、`norm: 1.0000000199780135`、
-`prompt_tokens: 35` 并输出 `PASS`。Embedding 不生成文本，
+真实目标机实测得到 `dimension: 2048`、norm 约为 `1.0` 并输出 `PASS`。
+Embedding 不生成文本，
 `completion_tokens: 0` 属正常结果。当前服务默认开启视觉分支，每个请求最多
 1 张图片；没有图片的请求仍只执行文本路径。
+
+`add_special_tokens: true` 是本模型使用 LAST pooling 时的必要参数。官方
+`Qwen3VLEmbedder` 会在 chat template 后追加 `<|endoftext|>`，而 vLLM 的 chat
+embedding 协议默认不额外添加 special token。若省略该参数，请求会少 1 个 token，
+并错误地池化前一个换行 token；该换行 token 的前向结果虽然与 Transformers
+对应位置一致，但不是官方 embedding。
 
 发送图片时使用 chat embedding 的 `image_url` 内容块。下面示例将本地图片编码
 成 data URI，避免服务进程访问不到客户端文件路径：
@@ -199,6 +206,7 @@ print(json.dumps({
         ]},
     ],
     "add_generation_prompt": True,
+    "add_special_tokens": True,
     "encoding_format": "float",
     "normalize": True,
 }))

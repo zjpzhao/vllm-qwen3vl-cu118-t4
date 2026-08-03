@@ -525,8 +525,11 @@ env \
 
 再按发布目录 `README.md` 的 `/v1/embeddings` 请求完成文本验收。成功判据为：
 模型名正确、向量维度 2048、全部数值有限、L2 norm 与 1.0 的差小于 0.02。
-本次真实目标机结果为 `norm=1.0000000199780135`、35 个 prompt tokens 和
-`completion_tokens=0`；embedding 不生成文本，因此 completion tokens 为 0 正常。
+本次真实目标机结果中 norm 约为 `1.0` 且 `completion_tokens=0`；embedding
+不生成文本，因此 completion tokens 为 0 正常。chat embedding 请求必须显式传入
+`add_special_tokens: true`，以和官方 `Qwen3VLEmbedder` 一样在模板末尾追加
+`<|endoftext|>` 并对它执行 LAST pooling。省略时 vLLM 默认值为 false，请求会少
+1 个 token，并池化前一个换行 token，不能与官方 embedding 对齐。
 
 当前命令默认允许每个请求携带 1 张图片并关闭视频；无图片请求仍只执行文本路径。
 视觉请求使用 chat embedding 的 `image_url` 内容块，建议传 data URI，避免服务端
